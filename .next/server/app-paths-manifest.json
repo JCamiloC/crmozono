@@ -1,0 +1,7 @@
+{
+  "/dashboard/configuracion/page": "app/dashboard/configuracion/page.js",
+  "/dashboard/campanas/page": "app/dashboard/campanas/page.js",
+  "/dashboard/leads/page": "app/dashboard/leads/page.js",
+  "/dashboard/llamadas/page": "app/dashboard/llamadas/page.js",
+  "/dashboard/mensajes/page": "app/dashboard/mensajes/page.js"
+}
