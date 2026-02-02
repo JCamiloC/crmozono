@@ -1,12 +1,1 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/login/page": "app/login/page.js",
-  "/page": "app/page.js",
-  "/dashboard/campanas/page": "app/dashboard/campanas/page.js",
-  "/dashboard/configuracion/page": "app/dashboard/configuracion/page.js",
-  "/dashboard/mensajes/page": "app/dashboard/mensajes/page.js",
-  "/dashboard/llamadas/page": "app/dashboard/llamadas/page.js",
-  "/dashboard/tareas/page": "app/dashboard/tareas/page.js",
-  "/dashboard/leads/page": "app/dashboard/leads/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
-}
+{}
