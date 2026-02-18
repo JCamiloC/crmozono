@@ -13,6 +13,7 @@ type IncomingMessage = {
   from: string;
   text: string;
   timestamp: string;
+  contactName: string | null;
 };
 
 type LeadLookupRow = {
@@ -24,8 +25,210 @@ type ConversationLookupRow = {
   id: string;
 };
 
+type CountryRow = {
+  id: string;
+  name: string;
+  code: string;
+};
+
+type ProfileAssignmentRow = {
+  id: string;
+  role: string;
+  country_id: string | null;
+  created_at: string;
+};
+
+type LeadAssignment = {
+  countryName: string;
+  adminId: string;
+  agentId: string;
+};
+
+type WebhookEventRow = {
+  id: string;
+  processed: boolean;
+};
+
+const callingCodeToCountryCode: Array<{ callingCode: string; countryCode: string }> = [
+  { callingCode: "57", countryCode: "CO" },
+  { callingCode: "52", countryCode: "MX" },
+  { callingCode: "56", countryCode: "CL" },
+  { callingCode: "51", countryCode: "PE" },
+  { callingCode: "54", countryCode: "AR" },
+  { callingCode: "58", countryCode: "VE" },
+  { callingCode: "593", countryCode: "EC" },
+  { callingCode: "591", countryCode: "BO" },
+  { callingCode: "595", countryCode: "PY" },
+  { callingCode: "598", countryCode: "UY" },
+  { callingCode: "55", countryCode: "BR" },
+];
+
 const normalizePhone = (value: string): string => {
   return value.replace(/[^\d]/g, "");
+};
+
+const isPlaceholderUuid = (value: string): boolean => {
+  return value === "00000000-0000-0000-0000-000000000001" || value === "00000000-0000-0000-0000-000000000002";
+};
+
+const getMessageBodyByType = (message: Record<string, unknown>): string => {
+  const type = typeof message.type === "string" ? message.type : "text";
+
+  if (
+    type === "text" &&
+    message.text &&
+    typeof message.text === "object" &&
+    typeof (message.text as { body?: unknown }).body === "string"
+  ) {
+    return String((message.text as { body: string }).body ?? "").trim();
+  }
+
+  if (
+    type === "button" &&
+    message.button &&
+    typeof message.button === "object" &&
+    typeof (message.button as { text?: unknown }).text === "string"
+  ) {
+    return `[button] ${(message.button as { text: string }).text}`;
+  }
+
+  if (type === "interactive" && message.interactive && typeof message.interactive === "object") {
+    const interactive = message.interactive as {
+      button_reply?: { title?: string };
+      list_reply?: { title?: string };
+    };
+
+    if (interactive.button_reply?.title) {
+      return `[interactive] ${interactive.button_reply.title}`;
+    }
+
+    if (interactive.list_reply?.title) {
+      return `[interactive] ${interactive.list_reply.title}`;
+    }
+  }
+
+  if (
+    (type === "image" || type === "video" || type === "document") &&
+    message[type] &&
+    typeof message[type] === "object" &&
+    typeof (message[type] as { caption?: unknown }).caption === "string"
+  ) {
+    return `[${type}] ${(message[type] as { caption: string }).caption}`;
+  }
+
+  return `[${type}] Mensaje no textual recibido`;
+};
+
+const getWebhookDefaultAssignments = () => {
+  const defaultCountry = process.env.WHATSAPP_DEFAULT_LEAD_COUNTRY ?? "No definido";
+  const defaultAdminId =
+    process.env.WHATSAPP_DEFAULT_ADMIN_ID ?? "00000000-0000-0000-0000-000000000001";
+  const defaultAgentId =
+    process.env.WHATSAPP_DEFAULT_AGENT_ID ?? "00000000-0000-0000-0000-000000000002";
+
+  return {
+    defaultCountry,
+    defaultAdminId,
+    defaultAgentId,
+  };
+};
+
+const detectCountryCodeByPhone = (phone: string): string | null => {
+  const normalized = normalizePhone(phone);
+  const sortedMapping = [...callingCodeToCountryCode].sort(
+    (leftItem, rightItem) => rightItem.callingCode.length - leftItem.callingCode.length
+  );
+
+  const match = sortedMapping.find((item) => normalized.startsWith(item.callingCode));
+  return match?.countryCode ?? null;
+};
+
+const findCountryByPhone = async (phone: string): Promise<CountryRow | null> => {
+  const countryCode = detectCountryCodeByPhone(phone);
+  if (!countryCode) {
+    return null;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("countries")
+    .select("id, name, code")
+    .eq("code", countryCode)
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("[webhook][whatsapp] country lookup error", error);
+    return null;
+  }
+
+  return data as CountryRow;
+};
+
+const resolveLeadAssignment = async (phone: string): Promise<LeadAssignment> => {
+  const supabase = createSupabaseAdminClient();
+  const fallback = getWebhookDefaultAssignments();
+  const detectedCountry = await findCountryByPhone(phone);
+
+  if (!detectedCountry) {
+    if (isPlaceholderUuid(fallback.defaultAdminId) || isPlaceholderUuid(fallback.defaultAgentId)) {
+      throw new Error(
+        "No se detectó país por indicativo y faltan WHATSAPP_DEFAULT_ADMIN_ID/WHATSAPP_DEFAULT_AGENT_ID válidos"
+      );
+    }
+
+    return {
+      countryName: fallback.defaultCountry,
+      adminId: fallback.defaultAdminId,
+      agentId: fallback.defaultAgentId,
+    };
+  }
+
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from("profiles")
+    .select("id, role, country_id, created_at")
+    .eq("country_id", detectedCountry.id)
+    .in("role", ["admin", "agente"])
+    .order("created_at", { ascending: true });
+
+  if (assignmentsError || !assignments) {
+    console.error("[webhook][whatsapp] profile assignment lookup error", assignmentsError);
+    return {
+      countryName: detectedCountry.name,
+      adminId: fallback.defaultAdminId,
+      agentId: fallback.defaultAgentId,
+    };
+  }
+
+  const rows = assignments as ProfileAssignmentRow[];
+  const admin = rows.find((row) => row.role === "admin");
+  const agent = rows.find((row) => row.role === "agente");
+
+  return {
+    countryName: detectedCountry.name,
+    adminId: admin?.id ?? fallback.defaultAdminId,
+    agentId: agent?.id ?? fallback.defaultAgentId,
+  };
+};
+
+const extractContactNameMap = (value: Record<string, unknown> | undefined): Map<string, string> => {
+  const map = new Map<string, string>();
+  const contacts = Array.isArray(value?.contacts) ? (value?.contacts as Record<string, unknown>[]) : [];
+
+  for (const contact of contacts) {
+    const waId = typeof contact.wa_id === "string" ? contact.wa_id : "";
+    const profileName =
+      contact.profile &&
+      typeof contact.profile === "object" &&
+      typeof (contact.profile as { name?: unknown }).name === "string"
+        ? (contact.profile as { name: string }).name
+        : "";
+
+    if (waId && profileName) {
+      map.set(waId, profileName);
+    }
+  }
+
+  return map;
 };
 
 const extractIncomingMessages = (payload: unknown): IncomingMessage[] => {
@@ -51,6 +254,8 @@ const extractIncomingMessages = (payload: unknown): IncomingMessage[] => {
           ? ((change as { value?: unknown }).value as Record<string, unknown> | undefined)
           : undefined;
 
+      const contactNames = extractContactNameMap(value);
+
       const messageList = Array.isArray(value?.messages)
         ? (value?.messages as Record<string, unknown>[])
         : [];
@@ -59,10 +264,7 @@ const extractIncomingMessages = (payload: unknown): IncomingMessage[] => {
         const from = typeof message.from === "string" ? message.from : "";
         const timestampRaw = typeof message.timestamp === "string" ? message.timestamp : "";
         const messageId = typeof message.id === "string" ? message.id : crypto.randomUUID();
-        const textBody =
-          message.text && typeof message.text === "object" && typeof (message.text as { body?: unknown }).body === "string"
-            ? ((message.text as { body: string }).body ?? "")
-            : "";
+        const textBody = getMessageBodyByType(message);
 
         if (!from || !textBody) {
           continue;
@@ -77,6 +279,7 @@ const extractIncomingMessages = (payload: unknown): IncomingMessage[] => {
           from,
           text: textBody,
           timestamp,
+          contactName: contactNames.get(from) ?? null,
         });
       }
     }
@@ -125,6 +328,47 @@ const findLeadByPhone = async (phone: string): Promise<string | null> => {
   );
 
   return lead?.id ?? null;
+};
+
+const createLeadFromInboundPhone = async (
+  phone: string,
+  contactName: string | null
+): Promise<string> => {
+  const supabase = createSupabaseAdminClient();
+  const assignment = await resolveLeadAssignment(phone);
+
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({
+      nombre: contactName,
+      telefono: phone,
+      pais: assignment.countryName,
+      administrador_id: assignment.adminId,
+      agente_id: assignment.agentId,
+      estado_actual: "nuevo",
+      fecha_estado: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "No se pudo auto-crear lead desde webhook");
+  }
+
+  const leadId = (data as { id: string }).id;
+
+  const { error: historyError } = await supabase.from("lead_status_history").insert({
+    lead_id: leadId,
+    estado: "nuevo",
+    fecha: new Date().toISOString(),
+    usuario_id: assignment.agentId,
+  });
+
+  if (historyError) {
+    console.error("[webhook][whatsapp] lead history insert error", historyError);
+  }
+
+  return leadId;
 };
 
 const getOrCreateConversation = async (leadId: string, lastMessage: string, updatedAt: string) => {
@@ -180,6 +424,25 @@ const saveWebhookEvent = async (
   phone?: string
 ) => {
   const supabase = createSupabaseAdminClient();
+
+  if (messageId) {
+    const { data: existingEvent, error: existingEventError } = await supabase
+      .from("webhook_events")
+      .select("id, processed")
+      .eq("provider", "whatsapp")
+      .eq("event_type", eventType)
+      .eq("message_id", messageId)
+      .maybeSingle();
+
+    if (existingEventError) {
+      console.error("[webhook][whatsapp] check existing event error", existingEventError);
+    }
+
+    if (existingEvent) {
+      return (existingEvent as WebhookEventRow).id;
+    }
+  }
+
   const { data, error } = await supabase
     .from("webhook_events")
     .insert({
@@ -218,8 +481,24 @@ export const processWhatsAppWebhook = async (payload: unknown) => {
 
   let processedCount = 0;
   let ignoredCount = 0;
+  let duplicateCount = 0;
 
   for (const incomingMessage of incomingMessages) {
+    const supabase = createSupabaseAdminClient();
+    const { data: existingProcessedEvent } = await supabase
+      .from("webhook_events")
+      .select("id, processed")
+      .eq("provider", "whatsapp")
+      .eq("event_type", "message_received")
+      .eq("message_id", incomingMessage.messageId)
+      .eq("processed", true)
+      .maybeSingle();
+
+    if (existingProcessedEvent) {
+      duplicateCount += 1;
+      continue;
+    }
+
     const eventId = await saveWebhookEvent(
       "message_received",
       payload,
@@ -228,15 +507,10 @@ export const processWhatsAppWebhook = async (payload: unknown) => {
     );
 
     try {
-      const leadId = await findLeadByPhone(incomingMessage.from);
-
-      if (!leadId) {
-        ignoredCount += 1;
-        if (eventId) {
-          await markWebhookEvent(eventId, false, "Lead no encontrado para teléfono entrante");
-        }
-        continue;
-      }
+      const existingLeadId = await findLeadByPhone(incomingMessage.from);
+      const leadId =
+        existingLeadId ??
+        (await createLeadFromInboundPhone(incomingMessage.from, incomingMessage.contactName));
 
       const conversationId = await getOrCreateConversation(
         leadId,
@@ -278,6 +552,7 @@ export const processWhatsAppWebhook = async (payload: unknown) => {
     incomingCount: incomingMessages.length,
     processedCount,
     ignoredCount,
+    duplicateCount,
   };
 };
 

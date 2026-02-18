@@ -133,6 +133,16 @@ export type SecuritySummary = {
   notes: string[];
 };
 
+export type UserAssignment = {
+  id: string;
+  email: string | null;
+  role: Role;
+  countryId: string | null;
+  countryName: string | null;
+  countryCode: string | null;
+  createdAt: string;
+};
+
 export type CallResult =
   | "venta"
   | "interesado"

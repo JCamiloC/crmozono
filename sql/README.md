@@ -20,4 +20,6 @@ Orden recomendado:
 15. 16_audit_logs.sql
 16. 17_webhook_events.sql
 17. 09_permissions_no_rls.sql
-18. 99_seed_admin.sql (solo pruebas)
+18. 18_seed_colombia_assignments.sql (opcional pruebas)
+19. 19_webhook_idempotency.sql
+20. 99_seed_admin.sql (solo pruebas)

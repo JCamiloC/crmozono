@@ -1,49 +1,168 @@
-import type { Country, RoleSummary, SecuritySummary } from "../types";
+import { createSupabaseBrowserClient } from "../lib/supabase/client";
+import type { Country, Role, RoleSummary, SecuritySummary, UserAssignment } from "../types";
 
-const mockCountries: Country[] = [
-  { id: "co", name: "Colombia", code: "CO" },
-  { id: "mx", name: "México", code: "MX" },
-  { id: "cl", name: "Chile", code: "CL" },
-  { id: "pe", name: "Perú", code: "PE" },
-];
+type RoleRow = {
+  id: string;
+  name: string;
+};
 
-const mockRoles: RoleSummary[] = [
-  {
-    id: "role-1",
-    name: "superadmin",
+type CountryRow = {
+  id: string;
+  name: string;
+  code: string;
+};
+
+type AssignmentRow = {
+  id: string;
+  email: string | null;
+  role: string;
+  country_id: string | null;
+  created_at: string;
+  countries?: CountryRow | CountryRow[] | null;
+};
+
+const roleCatalog: Record<Role, { description: string; permissions: string[] }> = {
+  superadmin: {
     description: "Control global del sistema y configuraciones generales.",
     permissions: ["Todos los países", "Gestión de usuarios", "Auditoría"],
   },
-  {
-    id: "role-2",
-    name: "admin",
+  admin: {
     description: "Gestión operativa del país asignado.",
     permissions: ["Leads del país", "Campañas locales", "Métricas"],
   },
-  {
-    id: "role-3",
-    name: "agente",
+  agente: {
     description: "Operación diaria sobre leads asignados.",
     permissions: ["Leads asignados", "Tareas", "Mensajes manuales"],
   },
-];
+};
 
-const mockSecurity: SecuritySummary = {
-  lastAuditAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
-  notes: [
-    "RLS pendiente de implementación final.",
-    "Se revisaron permisos básicos por rol.",
-  ],
+const toRole = (value: string): Role => {
+  if (value === "superadmin" || value === "admin" || value === "agente") {
+    return value;
+  }
+  return "agente";
+};
+
+const resolveCountry = (country: AssignmentRow["countries"]) => {
+  if (!country) {
+    return { countryName: null, countryCode: null };
+  }
+  if (Array.isArray(country)) {
+    return {
+      countryName: country[0]?.name ?? null,
+      countryCode: country[0]?.code ?? null,
+    };
+  }
+  return {
+    countryName: country.name,
+    countryCode: country.code,
+  };
 };
 
 export const listRoles = async (): Promise<RoleSummary[]> => {
-  return [...mockRoles];
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase.from("roles").select("id, name").order("name", {
+    ascending: true,
+  });
+
+  if (error || !data) {
+    console.error("[config] listRoles error", error);
+    return Object.entries(roleCatalog).map(([name, catalog], index) => ({
+      id: `fallback-role-${index + 1}`,
+      name: name as Role,
+      description: catalog.description,
+      permissions: catalog.permissions,
+    }));
+  }
+
+  return (data as RoleRow[]).map((row) => {
+    const role = toRole(row.name);
+    return {
+      id: row.id,
+      name: role,
+      description: roleCatalog[role].description,
+      permissions: roleCatalog[role].permissions,
+    };
+  });
 };
 
 export const listCountries = async (): Promise<Country[]> => {
-  return [...mockCountries];
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("countries")
+    .select("id, name, code")
+    .order("name", { ascending: true });
+
+  if (error || !data) {
+    console.error("[config] listCountries error", error);
+    return [];
+  }
+
+  return data as Country[];
+};
+
+export const listUserAssignments = async (): Promise<UserAssignment[]> => {
+  const supabase = createSupabaseBrowserClient();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, role, country_id, created_at, countries(id, name, code)")
+    .order("created_at", { ascending: true });
+
+  if (error || !data) {
+    console.error("[config] listUserAssignments error", error);
+    return [];
+  }
+
+  return (data as AssignmentRow[]).map((row) => {
+    const countryInfo = resolveCountry(row.countries);
+    return {
+      id: row.id,
+      email: row.email,
+      role: toRole(row.role),
+      countryId: row.country_id,
+      countryName: countryInfo.countryName,
+      countryCode: countryInfo.countryCode,
+      createdAt: row.created_at,
+    };
+  });
+};
+
+export const updateUserAssignment = async (
+  userId: string,
+  role: Role,
+  countryId: string | null
+): Promise<void> => {
+  const supabase = createSupabaseBrowserClient();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ role, country_id: countryId })
+    .eq("id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 };
 
 export const getSecuritySummary = async (): Promise<SecuritySummary> => {
-  return { ...mockSecurity };
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("created_at")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[config] getSecuritySummary error", error);
+  }
+
+  return {
+    lastAuditAt: data?.created_at ?? new Date().toISOString(),
+    notes: [
+      "RLS pendiente de activación final (fase de hardening).",
+      "Asignación por país activa desde Configuración.",
+    ],
+  };
 };

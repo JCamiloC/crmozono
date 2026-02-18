@@ -25,6 +25,9 @@ Configurar en `.env`:
 - `WHATSAPP_ACCESS_TOKEN`
 - `WHATSAPP_PHONE_NUMBER_ID`
 - `WHATSAPP_BUSINESS_ACCOUNT_ID`
+- `WHATSAPP_DEFAULT_LEAD_COUNTRY` (opcional, recomendado)
+- `WHATSAPP_DEFAULT_ADMIN_ID` (opcional, recomendado)
+- `WHATSAPP_DEFAULT_AGENT_ID` (opcional, recomendado)
 
 Además de Supabase:
 
@@ -114,7 +117,13 @@ Cuando llega un mensaje entrante:
    - Se crea/actualiza `conversations`
    - Se registra mensaje inbound en `messages`
 5. Si no existe lead:
-   - Se guarda error de trazabilidad en `webhook_events`
+   - Se detecta país por indicativo telefónico (ej. `57 -> CO`)
+   - Se busca país en `countries`
+   - Se asigna `admin` y `agente` del país desde `profiles`
+   - Si falta configuración por país, usa fallback por variables de entorno
+   - Se crea lead automáticamente con estado `nuevo`
+   - Se registra historial inicial en `lead_status_history`
+   - Se crea/actualiza conversación y mensaje inbound
 
 ---
 
@@ -138,18 +147,50 @@ Cuando llega un mensaje entrante:
    - `messages`
 4. Abrir `https://crm.superozonoglobal.com/dashboard/mensajes` y confirmar conversación
 
+Checklist esperado por cada mensaje nuevo:
+
+- `webhook_events`: fila `message_received` creada
+- `webhook_events.processed = true`
+- `leads`: lead existente o auto-creado por teléfono
+- `conversations`: conversación creada/actualizada
+- `messages`: mensaje inbound insertado
+
+Si el mismo mensaje llega dos veces (reintento Meta):
+
+- no debe duplicar `messages`
+- aparece en resumen como `duplicateCount`
+
 ---
 
 ## 8) Errores comunes
 
 - **403 webhook verification failed**: verify token distinto entre `.env` y Meta
 - **401 invalid signature**: `WHATSAPP_APP_SECRET` incorrecto
-- **No entra al CRM**: número no coincide con `leads.telefono`
+- **No entra al CRM**: revisar asignación por defecto (`WHATSAPP_DEFAULT_ADMIN_ID`, `WHATSAPP_DEFAULT_AGENT_ID`, `WHATSAPP_DEFAULT_LEAD_COUNTRY`)
+- **Asignación incorrecta de país**: validar código ISO en `countries.code` y perfiles `admin/agente` con `country_id` correcto
 - **No llegan eventos**: campo `messages` no suscrito
+- **Mensaje no textual**: ahora se guarda como placeholder (`[image]`, `[interactive]`, etc.)
 
 ---
 
-## 9) Nota de seguridad
+## 9) Checklist pre-deploy (evitar iteraciones)
+
+Antes de desplegar cambios de webhook:
+
+1. Ejecutar `npm run lint` y `npm run build`
+2. Confirmar SQL aplicado:
+   - `17_webhook_events.sql`
+   - `19_webhook_idempotency.sql`
+3. Verificar que exista al menos un `admin` y un `agente` por país en `profiles`
+4. Verificar fallback en `.env`:
+   - `WHATSAPP_DEFAULT_ADMIN_ID`
+   - `WHATSAPP_DEFAULT_AGENT_ID`
+   - `WHATSAPP_DEFAULT_LEAD_COUNTRY`
+5. Confirmar webhook Meta sigue apuntando al callback correcto
+
+---
+
+## 10) Nota de seguridad
 
 - RLS está diferida por decisión del proyecto y se aplicará al final.
 - Antes de producción final: activar RLS, reducir permisos y revisar llaves sensibles.
