@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import TaskDetailPanel from "../../../components/tasks/TaskDetailPanel";
 import TaskFilters from "../../../components/tasks/TaskFilters";
 import TaskTable from "../../../components/tasks/TaskTable";
@@ -22,6 +22,7 @@ const reminderNotes = [
 export default function TareasPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [referenceNowMs, setReferenceNowMs] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const [statusValue, setStatusValue] = useState<TaskStatus | "all">("all");
   const [dateValue, setDateValue] = useState<string | "all">("all");
@@ -32,6 +33,7 @@ export default function TareasPage() {
     const load = async () => {
       const data = await listTasks();
       setTasks(data);
+      setReferenceNowMs(Date.now());
       if (data.length > 0) {
         setSelectedTaskId(data[0].id);
       }
@@ -48,28 +50,28 @@ export default function TareasPage() {
     loadHistory();
   }, [selectedTaskId]);
 
-  const filteredTasks = useMemo(() => {
-    const now = new Date();
-    return tasks.filter((task) => {
-      const searchMatch =
-        task.titulo.toLowerCase().includes(searchValue.toLowerCase()) ||
-        task.leadNombre.toLowerCase().includes(searchValue.toLowerCase());
-      const statusMatch = statusValue === "all" || task.estado === statusValue;
-      const dueDate = new Date(task.fechaProgramada);
-      const dateMatch =
-        dateValue === "all" ||
-        (dateValue === "today" && dueDate.toDateString() === now.toDateString()) ||
-        (dateValue === "week" &&
-          dueDate.getTime() <= now.getTime() + 1000 * 60 * 60 * 24 * 7) ||
-        (dateValue === "overdue" && dueDate < now);
-      return searchMatch && statusMatch && dateMatch;
-    });
-  }, [tasks, searchValue, statusValue, dateValue]);
+  const filteredTasks = tasks.filter((task) => {
+    const searchMatch =
+      task.titulo.toLowerCase().includes(searchValue.toLowerCase()) ||
+      task.leadNombre.toLowerCase().includes(searchValue.toLowerCase());
+    const statusMatch = statusValue === "all" || task.estado === statusValue;
+    const dueDate = new Date(task.fechaProgramada).getTime();
+    const now = referenceNowMs;
+    const isToday =
+      new Date(dueDate).toDateString() === new Date(now).toDateString();
+    const isWithinWeek = dueDate <= now + 1000 * 60 * 60 * 24 * 7;
+    const isOverdue = dueDate < now;
 
-  const selectedTask = useMemo(
-    () => tasks.find((task) => task.id === selectedTaskId) ?? null,
-    [tasks, selectedTaskId]
-  );
+    const dateMatch =
+      dateValue === "all" ||
+      (dateValue === "today" && isToday) ||
+      (dateValue === "week" && isWithinWeek) ||
+      (dateValue === "overdue" && isOverdue);
+
+    return searchMatch && statusMatch && dateMatch;
+  });
+
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
 
   const handleStatusChange = async (status: TaskStatus) => {
     if (!selectedTask) return;

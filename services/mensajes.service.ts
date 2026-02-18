@@ -1,142 +1,213 @@
+import { createSupabaseBrowserClient } from "../lib/supabase/client";
 import type { Conversation, Message, MessageTemplate } from "../types";
 
-const mockConversations: Conversation[] = [
-	{
-		id: "conv-001",
-		leadId: "lead-001",
-		leadName: "María Torres",
-		leadPhone: "+57 300 123 4567",
-		initials: "MT",
-		lastMessage: "Gracias, esperaré el seguimiento.",
-		updatedAt: new Date().toISOString(),
-	},
-	{
-		id: "conv-002",
-		leadId: "lead-002",
-		leadName: "José Martínez",
-		leadPhone: "+52 55 2345 6789",
-		initials: "JM",
-		lastMessage: "¿Me puedes enviar la propuesta?",
-		updatedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-	},
-	{
-		id: "conv-003",
-		leadId: "lead-003",
-		leadName: "Carolina Ríos",
-		leadPhone: "+56 9 8123 4567",
-		initials: "CR",
-		lastMessage: "Listo, agendemos una llamada.",
-		updatedAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-	},
-];
+type ConversationRow = {
+	id: string;
+	lead_id: string;
+	last_message: string | null;
+	updated_at: string;
+	leads?: { nombre: string | null; telefono: string } | { nombre: string | null; telefono: string }[] | null;
+};
 
-const mockMessages: Message[] = [
-	{
-		id: "msg-001",
-		conversationId: "conv-001",
-		body: "Hola María, gracias por tu interés en SuperOzono.",
-		direction: "outbound",
-		createdAt: new Date(Date.now() - 1000 * 60 * 80).toISOString(),
-	},
-	{
-		id: "msg-002",
-		conversationId: "conv-001",
-		body: "¿Quieres que te enviemos el plan de instalación?",
-		direction: "outbound",
-		createdAt: new Date(Date.now() - 1000 * 60 * 70).toISOString(),
-	},
-	{
-		id: "msg-003",
-		conversationId: "conv-001",
-		body: "Gracias, esperaré el seguimiento.",
-		direction: "inbound",
-		createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-	},
-	{
-		id: "msg-004",
-		conversationId: "conv-002",
-		body: "Hola José, te comparto la propuesta en breve.",
-		direction: "outbound",
-		createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-	},
-	{
-		id: "msg-005",
-		conversationId: "conv-002",
-		body: "¿Me puedes enviar la propuesta?",
-		direction: "inbound",
-		createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-	},
-	{
-		id: "msg-006",
-		conversationId: "conv-003",
-		body: "¿Agendamos una llamada esta semana?",
-		direction: "outbound",
-		createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-	},
-	{
-		id: "msg-007",
-		conversationId: "conv-003",
-		body: "Listo, agendemos una llamada.",
-		direction: "inbound",
-		createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-	},
-];
+type MessageRow = {
+	id: string;
+	conversation_id: string;
+	body: string;
+	direction: string;
+	created_at: string;
+};
 
-const mockTemplates: MessageTemplate[] = [
+type MessageTemplateRow = {
+	id: string;
+	name: string;
+	preview: string;
+	body: string;
+};
+
+const defaultTemplates: MessageTemplate[] = [
 	{
-		id: "tpl-001",
+		id: "tpl-default-001",
 		name: "Bienvenida",
 		preview: "Hola {{nombre}}, gracias por contactarnos...",
 		body: "Hola {{nombre}}, gracias por contactarnos en SuperOzono. ¿En qué podemos ayudarte?",
 	},
 	{
-		id: "tpl-002",
+		id: "tpl-default-002",
 		name: "Seguimiento",
 		preview: "Queremos saber si pudiste revisar...",
 		body: "Hola {{nombre}}, queremos saber si pudiste revisar la propuesta. Quedamos atentos.",
 	},
 	{
-		id: "tpl-003",
+		id: "tpl-default-003",
 		name: "Garantía",
 		preview: "Gracias por tu compra, te recordamos...",
 		body: "Gracias por tu compra. Recuerda que tu garantía está activa y nuestro equipo te acompaña.",
 	},
 ];
 
+const getLeadData = (leads: ConversationRow["leads"]) => {
+	if (!leads) {
+		return { leadName: "Lead sin nombre", leadPhone: "" };
+	}
+	if (Array.isArray(leads)) {
+		return {
+			leadName: leads[0]?.nombre ?? "Lead sin nombre",
+			leadPhone: leads[0]?.telefono ?? "",
+		};
+	}
+	return {
+		leadName: leads.nombre ?? "Lead sin nombre",
+		leadPhone: leads.telefono,
+	};
+};
+
+const getInitials = (name: string) => {
+	const cleanName = name.trim();
+	if (!cleanName) {
+		return "--";
+	}
+	const parts = cleanName.split(" ").filter(Boolean);
+	if (parts.length === 1) {
+		return parts[0].slice(0, 2).toUpperCase();
+	}
+	return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+};
+
+const normalizeDirection = (value: string): "inbound" | "outbound" => {
+	return value === "inbound" ? "inbound" : "outbound";
+};
+
+const mapConversationRow = (row: ConversationRow): Conversation => {
+	const leadData = getLeadData(row.leads);
+	return {
+		id: row.id,
+		leadId: row.lead_id,
+		leadName: leadData.leadName,
+		leadPhone: leadData.leadPhone,
+		initials: getInitials(leadData.leadName),
+		lastMessage: row.last_message ?? "Sin mensajes",
+		updatedAt: row.updated_at,
+	};
+};
+
+const mapMessageRow = (row: MessageRow): Message => {
+	return {
+		id: row.id,
+		conversationId: row.conversation_id,
+		body: row.body,
+		direction: normalizeDirection(row.direction),
+		createdAt: row.created_at,
+	};
+};
+
+const mapTemplateRow = (row: MessageTemplateRow): MessageTemplate => {
+	return {
+		id: row.id,
+		name: row.name,
+		preview: row.preview,
+		body: row.body,
+	};
+};
+
 export const listConversations = async (): Promise<Conversation[]> => {
-	return [...mockConversations];
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("conversations")
+		.select("id, lead_id, last_message, updated_at, leads(nombre, telefono)")
+		.order("updated_at", { ascending: false });
+
+	if (error || !data) {
+		console.error("[messages] listConversations error", error);
+		return [];
+	}
+
+	return (data as ConversationRow[]).map(mapConversationRow);
 };
 
 export const getConversationById = async (
 	conversationId: string
 ): Promise<Conversation | null> => {
-	return mockConversations.find((conversation) => conversation.id === conversationId) ?? null;
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("conversations")
+		.select("id, lead_id, last_message, updated_at, leads(nombre, telefono)")
+		.eq("id", conversationId)
+		.maybeSingle();
+
+	if (error || !data) {
+		return null;
+	}
+
+	return mapConversationRow(data as ConversationRow);
 };
 
 export const listMessages = async (conversationId: string): Promise<Message[]> => {
-	return mockMessages.filter((message) => message.conversationId === conversationId);
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("messages")
+		.select("id, conversation_id, body, direction, created_at")
+		.eq("conversation_id", conversationId)
+		.order("created_at", { ascending: true });
+
+	if (error || !data) {
+		console.error("[messages] listMessages error", error);
+		return [];
+	}
+
+	return (data as MessageRow[]).map(mapMessageRow);
 };
 
 export const sendMessage = async (
 	conversationId: string,
 	body: string
 ): Promise<Message> => {
-	const newMessage: Message = {
-		id: `msg-${Math.random().toString(36).slice(2, 7)}`,
-		conversationId,
-		body,
-		direction: "outbound",
-		createdAt: new Date().toISOString(),
-	};
-	mockMessages.push(newMessage);
-	const conversation = mockConversations.find((item) => item.id === conversationId);
-	if (conversation) {
-		conversation.lastMessage = body;
-		conversation.updatedAt = newMessage.createdAt;
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("messages")
+		.insert({
+			conversation_id: conversationId,
+			body,
+			direction: "outbound",
+		})
+		.select("id, conversation_id, body, direction, created_at")
+		.single();
+
+	if (error || !data) {
+		throw new Error(error?.message ?? "No se pudo enviar el mensaje");
 	}
-	return newMessage;
+
+	const message = mapMessageRow(data as MessageRow);
+
+	const { error: updateConversationError } = await supabase
+		.from("conversations")
+		.update({
+			last_message: body,
+			updated_at: message.createdAt,
+		})
+		.eq("id", conversationId);
+
+	if (updateConversationError) {
+		console.error("[messages] update conversation after send error", updateConversationError);
+	}
+
+	return message;
 };
 
 export const listTemplates = async (): Promise<MessageTemplate[]> => {
-	return [...mockTemplates];
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("message_templates")
+		.select("id, name, preview, body")
+		.order("name", { ascending: true });
+
+	if (error || !data) {
+		console.error("[messages] listTemplates error", error);
+		return defaultTemplates;
+	}
+
+	if (data.length === 0) {
+		return defaultTemplates;
+	}
+
+	return (data as MessageTemplateRow[]).map(mapTemplateRow);
 };

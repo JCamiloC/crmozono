@@ -24,6 +24,7 @@ const callNotes = [
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [referenceNowMs, setReferenceNowMs] = useState(0);
   const [searchValue, setSearchValue] = useState("");
   const [statusValue, setStatusValue] = useState<LeadStatus | "all">("all");
   const [countryValue, setCountryValue] = useState<string | "all">("all");
@@ -47,6 +48,7 @@ export default function LeadsPage() {
       if (!selectedLeadId) return;
       const data = await getLeadHistory(selectedLeadId);
       setHistory(data);
+      setReferenceNowMs(Date.now());
     };
     loadHistory();
   }, [selectedLeadId]);
@@ -136,14 +138,14 @@ export default function LeadsPage() {
         0,
         5 -
           Math.floor(
-            (Date.now() - new Date(selectedLead.createdAt).getTime()) /
+            (referenceNowMs - new Date(selectedLead.createdAt).getTime()) /
               (1000 * 60 * 60 * 24)
           )
       )
     : 0;
 
   const isSlaBreached = selectedLead
-    ? Date.now() - new Date(selectedLead.createdAt).getTime() >
+    ? referenceNowMs - new Date(selectedLead.createdAt).getTime() >
       1000 * 60 * 60 * 24 * 5
     : false;
 
@@ -180,6 +182,7 @@ export default function LeadsPage() {
               leads={filteredLeads}
               selectedLeadId={selectedLeadId}
               onSelect={setSelectedLeadId}
+              referenceNowMs={referenceNowMs}
             />
           )}
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInWithPassword, fetchUserProfile } from "../../services/auth/auth.service";
 import { getDefaultRouteForRole } from "../../lib/auth";
@@ -111,6 +112,16 @@ export default function LoginPage() {
                 <span>¿Olvidaste tu contraseña?</span>
                 <span className="font-semibold text-botanical-700">Soporte</span>
               </div>
+              <p className="text-xs text-botanical-600">
+                Al continuar aceptas nuestra{" "}
+                <Link
+                  href="/politica-privacidad"
+                  className="font-semibold text-botanical-700 underline-offset-2 hover:underline"
+                >
+                  Política de Privacidad
+                </Link>
+                .
+              </p>
               {error ? <p className="text-sm text-red-600">{error}</p> : null}
               <button
                 type="submit"

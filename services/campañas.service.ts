@@ -1,69 +1,130 @@
+import { createSupabaseBrowserClient } from "../lib/supabase/client";
 import type { Campaign, CampaignLog } from "../types";
 
-const mockCampaigns: Campaign[] = [
-	{
-		id: "cmp-001",
-		name: "Oferta mantenimiento",
-		segment: "Leads activos Colombia",
-		status: "running",
-		scheduledAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-		totalRecipients: 120,
-		sentCount: 96,
-		failedCount: 4,
-		deliveryRate: 80,
-		messagePreview: "Hola {{nombre}}, tenemos una oferta especial...",
-	},
-	{
-		id: "cmp-002",
-		name: "Reactivación Q1",
-		segment: "Leads inactivos México",
-		status: "scheduled",
-		scheduledAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-		totalRecipients: 240,
-		sentCount: 0,
-		failedCount: 0,
-		deliveryRate: 0,
-		messagePreview: "Hola {{nombre}}, queremos compartir una novedad...",
-	},
-	{
-		id: "cmp-003",
-		name: "Garantía extendida",
-		segment: "Clientes recientes Perú",
-		status: "completed",
-		scheduledAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-		totalRecipients: 80,
-		sentCount: 78,
-		failedCount: 2,
-		deliveryRate: 97,
-		messagePreview: "Gracias por tu compra, tu garantía sigue activa...",
-	},
-];
+type CampaignRow = {
+	id: string;
+	name: string;
+	segment: string;
+	status: string;
+	scheduled_at: string;
+	total_recipients: number;
+	sent_count: number;
+	failed_count: number;
+	delivery_rate: number;
+	message_preview: string;
+};
 
-const mockLogs: CampaignLog[] = [
-	{ id: "log-001", campaignId: "cmp-001", phone: "+57 300 111 2222", status: "enviado" },
-	{ id: "log-002", campaignId: "cmp-001", phone: "+57 300 333 4444", status: "enviado" },
-	{ id: "log-003", campaignId: "cmp-001", phone: "+57 300 555 6666", status: "fallido" },
-	{ id: "log-004", campaignId: "cmp-002", phone: "+52 55 1111 2222", status: "bloqueado" },
-	{ id: "log-005", campaignId: "cmp-003", phone: "+51 999 888 777", status: "enviado" },
-];
+type CampaignLogRow = {
+	id: string;
+	campaign_id: string;
+	phone: string;
+	status: "enviado" | "fallido" | "bloqueado";
+};
+
+const mapCampaignRow = (row: CampaignRow): Campaign => {
+	return {
+		id: row.id,
+		name: row.name,
+		segment: row.segment,
+		status:
+			row.status === "scheduled" ||
+			row.status === "running" ||
+			row.status === "completed" ||
+			row.status === "paused"
+				? row.status
+				: "draft",
+		scheduledAt: row.scheduled_at,
+		totalRecipients: row.total_recipients,
+		sentCount: row.sent_count,
+		failedCount: row.failed_count,
+		deliveryRate: Number(row.delivery_rate ?? 0),
+		messagePreview: row.message_preview,
+	};
+};
+
+const mapCampaignLogRow = (row: CampaignLogRow): CampaignLog => {
+	return {
+		id: row.id,
+		campaignId: row.campaign_id,
+		phone: row.phone,
+		status: row.status,
+	};
+};
 
 export const listCampaigns = async (): Promise<Campaign[]> => {
-	return [...mockCampaigns];
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("campaigns")
+		.select(
+			"id, name, segment, status, scheduled_at, total_recipients, sent_count, failed_count, delivery_rate, message_preview"
+		)
+		.order("scheduled_at", { ascending: false });
+
+	if (error || !data) {
+		console.error("[campaigns] listCampaigns error", error);
+		return [];
+	}
+
+	return (data as CampaignRow[]).map(mapCampaignRow);
 };
 
 export const getCampaignById = async (campaignId: string): Promise<Campaign | null> => {
-	return mockCampaigns.find((campaign) => campaign.id === campaignId) ?? null;
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("campaigns")
+		.select(
+			"id, name, segment, status, scheduled_at, total_recipients, sent_count, failed_count, delivery_rate, message_preview"
+		)
+		.eq("id", campaignId)
+		.maybeSingle();
+
+	if (error || !data) {
+		return null;
+	}
+
+	return mapCampaignRow(data as CampaignRow);
 };
 
-export const createCampaign = async (payload: Omit<Campaign, "id">) => {
-	const newCampaign: Campaign = {
-		...payload,
-		id: `cmp-${Math.random().toString(36).slice(2, 7)}`,
-	};
-	mockCampaigns.push(newCampaign);
-	return newCampaign;
+export const createCampaign = async (payload: Omit<Campaign, "id">): Promise<Campaign> => {
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("campaigns")
+		.insert({
+			name: payload.name,
+			segment: payload.segment,
+			status: payload.status,
+			scheduled_at: payload.scheduledAt,
+			total_recipients: payload.totalRecipients,
+			sent_count: payload.sentCount,
+			failed_count: payload.failedCount,
+			delivery_rate: payload.deliveryRate,
+			message_preview: payload.messagePreview,
+			updated_at: new Date().toISOString(),
+		})
+		.select(
+			"id, name, segment, status, scheduled_at, total_recipients, sent_count, failed_count, delivery_rate, message_preview"
+		)
+		.single();
+
+	if (error || !data) {
+		throw new Error(error?.message ?? "No se pudo crear la campaña");
+	}
+
+	return mapCampaignRow(data as CampaignRow);
 };
 
 export const listCampaignLogs = async (campaignId: string): Promise<CampaignLog[]> => {
-	return mockLogs.filter((log) => log.campaignId === campaignId);
+	const supabase = createSupabaseBrowserClient();
+	const { data, error } = await supabase
+		.from("campaign_logs")
+		.select("id, campaign_id, phone, status")
+		.eq("campaign_id", campaignId)
+		.order("created_at", { ascending: false });
+
+	if (error || !data) {
+		console.error("[campaigns] listCampaignLogs error", error);
+		return [];
+	}
+
+	return (data as CampaignLogRow[]).map(mapCampaignLogRow);
 };

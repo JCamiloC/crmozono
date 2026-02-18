@@ -5,16 +5,18 @@ type LeadTableProps = {
   leads: Lead[];
   selectedLeadId: string | null;
   onSelect: (leadId: string) => void;
+  referenceNowMs: number;
 };
 
 export default function LeadTable({
   leads,
   selectedLeadId,
   onSelect,
+  referenceNowMs,
 }: LeadTableProps) {
   const getSlaInfo = (createdAt: string) => {
     const days = Math.floor(
-      (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
+      (referenceNowMs - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
     );
     const remaining = Math.max(0, 5 - days);
     return { remaining, isBreached: days > 5 };

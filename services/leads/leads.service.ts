@@ -1,146 +1,216 @@
+import { createSupabaseBrowserClient } from "../../lib/supabase/client";
 import type { Lead, LeadStatus, LeadStatusHistory } from "../../types";
 
-// TODO: Reemplazar mock por Supabase cuando se habilite backend real.
-const SLA_DAYS = 5;
-const mockLeads: Lead[] = [
-  {
-    id: "lead-001",
-    nombre: "María Torres",
-    telefono: "+57 300 123 4567",
-    pais: "Colombia",
-    administradorId: "admin-co",
-    agenteId: "agente-co-01",
-    estadoActual: "nuevo",
-    fechaEstado: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "lead-002",
-    nombre: "José Martínez",
-    telefono: "+52 55 2345 6789",
-    pais: "México",
-    administradorId: "admin-mx",
-    agenteId: "agente-mx-03",
-    estadoActual: "seguimiento",
-    fechaEstado: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "lead-003",
-    nombre: "Carolina Ríos",
-    telefono: "+56 9 8123 4567",
-    pais: "Chile",
-    administradorId: "admin-cl",
-    agenteId: "agente-cl-02",
-    estadoActual: "contactado",
-    fechaEstado: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "lead-004",
-    nombre: "Daniel Herrera",
-    telefono: "+51 999 888 777",
-    pais: "Perú",
-    administradorId: "admin-pe",
-    agenteId: "agente-pe-05",
-    estadoActual: "llamada",
-    fechaEstado: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "lead-005",
-    nombre: "Sofía López",
-    telefono: "+54 11 5678 9012",
-    pais: "Argentina",
-    administradorId: "admin-ar",
-    agenteId: "agente-ar-01",
-    estadoActual: "venta",
-    fechaEstado: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
+type LeadRow = {
+  id: string;
+  nombre: string | null;
+  telefono: string;
+  pais: string;
+  administrador_id: string;
+  agente_id: string;
+  estado_actual: string;
+  fecha_estado: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type LeadHistoryRow = {
+  id: string;
+  lead_id: string;
+  estado: string;
+  fecha: string;
+  usuario_id: string;
+};
+
+const VALID_LEAD_STATUS: LeadStatus[] = [
+  "nuevo",
+  "contactado",
+  "seguimiento",
+  "llamada",
+  "venta",
+  "no_interesado",
+  "cerrado_tiempo",
 ];
 
-const mockHistory: LeadStatusHistory[] = mockLeads.map((lead, index) => ({
-  id: `history-${index + 1}`,
-  leadId: lead.id,
-  estado: lead.estadoActual,
-  fecha: lead.fechaEstado,
-  usuarioId: lead.agenteId,
-}));
+const normalizeLeadStatus = (value: string): LeadStatus => {
+  if (VALID_LEAD_STATUS.includes(value as LeadStatus)) {
+    return value as LeadStatus;
+  }
+  return "nuevo";
+};
+
+const mapLeadRow = (row: LeadRow): Lead => {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    telefono: row.telefono,
+    pais: row.pais,
+    administradorId: row.administrador_id,
+    agenteId: row.agente_id,
+    estadoActual: normalizeLeadStatus(row.estado_actual),
+    fechaEstado: row.fecha_estado,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
+const mapLeadHistoryRow = (row: LeadHistoryRow): LeadStatusHistory => {
+  return {
+    id: row.id,
+    leadId: row.lead_id,
+    estado: normalizeLeadStatus(row.estado),
+    fecha: row.fecha,
+    usuarioId: row.usuario_id,
+  };
+};
+
+const getFallbackActorId = async (lead: Lead): Promise<string> => {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? lead.agenteId;
+};
 
 export const listLeads = async (): Promise<Lead[]> => {
-  const now = Date.now();
-  mockLeads.forEach((lead) => {
-    const createdAtMs = new Date(lead.createdAt).getTime();
-    const ageDays = (now - createdAtMs) / (1000 * 60 * 60 * 24);
-    if (ageDays > SLA_DAYS && lead.estadoActual !== "venta" && lead.estadoActual !== "cerrado_tiempo") {
-      lead.estadoActual = "cerrado_tiempo";
-      lead.fechaEstado = new Date().toISOString();
-      lead.updatedAt = new Date().toISOString();
-      mockHistory.push({
-        id: `history-${mockHistory.length + 1}`,
-        leadId: lead.id,
-        estado: "cerrado_tiempo",
-        fecha: lead.fechaEstado,
-        usuarioId: "sistema",
-      });
-    }
-  });
-  return [...mockLeads];
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .select(
+      "id, nombre, telefono, pais, administrador_id, agente_id, estado_actual, fecha_estado, created_at, updated_at"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    console.error("[leads] listLeads error", error);
+    return [];
+  }
+
+  return (data as LeadRow[]).map(mapLeadRow);
 };
 
 export const getLeadById = async (leadId: string): Promise<Lead | null> => {
-  return mockLeads.find((lead) => lead.id === leadId) ?? null;
-};
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .select(
+      "id, nombre, telefono, pais, administrador_id, agente_id, estado_actual, fecha_estado, created_at, updated_at"
+    )
+    .eq("id", leadId)
+    .maybeSingle();
 
-export const createLead = async (payload: Omit<Lead, "id" | "createdAt" | "updatedAt">) => {
-  const newLead: Lead = {
-    ...payload,
-    id: `lead-${Math.random().toString(36).slice(2, 7)}`,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  mockLeads.push(newLead);
-  return newLead;
-};
-
-export const updateLeadStatus = async (leadId: string, status: LeadStatus) => {
-  const lead = mockLeads.find((item) => item.id === leadId);
-  if (!lead) {
-    throw new Error("Lead no encontrado");
+  if (error || !data) {
+    return null;
   }
-  lead.estadoActual = status;
-  lead.fechaEstado = new Date().toISOString();
-  lead.updatedAt = new Date().toISOString();
-  mockHistory.push({
-    id: `history-${mockHistory.length + 1}`,
-    leadId,
+
+  return mapLeadRow(data as LeadRow);
+};
+
+export const createLead = async (
+  payload: Omit<Lead, "id" | "createdAt" | "updatedAt">
+): Promise<Lead> => {
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({
+      nombre: payload.nombre,
+      telefono: payload.telefono,
+      pais: payload.pais,
+      administrador_id: payload.administradorId,
+      agente_id: payload.agenteId,
+      estado_actual: payload.estadoActual,
+      fecha_estado: payload.fechaEstado,
+    })
+    .select(
+      "id, nombre, telefono, pais, administrador_id, agente_id, estado_actual, fecha_estado, created_at, updated_at"
+    )
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "No se pudo crear el lead");
+  }
+
+  return mapLeadRow(data as LeadRow);
+};
+
+export const updateLeadStatus = async (
+  leadId: string,
+  status: LeadStatus
+): Promise<Lead> => {
+  const supabase = createSupabaseBrowserClient();
+  const timestamp = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("leads")
+    .update({
+      estado_actual: status,
+      fecha_estado: timestamp,
+      updated_at: timestamp,
+    })
+    .eq("id", leadId)
+    .select(
+      "id, nombre, telefono, pais, administrador_id, agente_id, estado_actual, fecha_estado, created_at, updated_at"
+    )
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "No se pudo actualizar el estado del lead");
+  }
+
+  const lead = mapLeadRow(data as LeadRow);
+  const actorId = await getFallbackActorId(lead);
+
+  const { error: historyError } = await supabase.from("lead_status_history").insert({
+    lead_id: lead.id,
     estado: status,
-    fecha: lead.fechaEstado,
-    usuarioId: lead.agenteId,
+    fecha: timestamp,
+    usuario_id: actorId,
   });
+
+  if (historyError) {
+    console.error("[leads] lead_status_history insert error", historyError);
+  }
+
   return lead;
 };
 
-export const closeLead = async (leadId: string) => {
+export const closeLead = async (leadId: string): Promise<Lead> => {
   return updateLeadStatus(leadId, "venta");
 };
 
-export const assignLead = async (leadId: string, agenteId: string) => {
-  const lead = mockLeads.find((item) => item.id === leadId);
-  if (!lead) {
-    throw new Error("Lead no encontrado");
+export const assignLead = async (leadId: string, agenteId: string): Promise<Lead> => {
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .update({
+      agente_id: agenteId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", leadId)
+    .select(
+      "id, nombre, telefono, pais, administrador_id, agente_id, estado_actual, fecha_estado, created_at, updated_at"
+    )
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "No se pudo asignar el lead");
   }
-  lead.agenteId = agenteId;
-  lead.updatedAt = new Date().toISOString();
-  return lead;
+
+  return mapLeadRow(data as LeadRow);
 };
 
 export const getLeadHistory = async (leadId: string): Promise<LeadStatusHistory[]> => {
-  return mockHistory.filter((item) => item.leadId === leadId);
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("lead_status_history")
+    .select("id, lead_id, estado, fecha, usuario_id")
+    .eq("lead_id", leadId)
+    .order("fecha", { ascending: false });
+
+  if (error || !data) {
+    console.error("[leads] getLeadHistory error", error);
+    return [];
+  }
+
+  return (data as LeadHistoryRow[]).map(mapLeadHistoryRow);
 };

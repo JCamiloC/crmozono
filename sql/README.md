@@ -11,4 +11,13 @@ Orden recomendado:
 6. 06_lead_status_history.sql
 7. 07_tasks.sql
 8. 08_task_history.sql
-9. 99_seed_admin.sql (solo pruebas)
+9. 10_conversations.sql
+10. 11_messages.sql
+11. 12_message_templates.sql
+12. 13_calls.sql
+13. 14_campaigns.sql
+14. 15_campaign_logs.sql
+15. 16_audit_logs.sql
+16. 17_webhook_events.sql
+17. 09_permissions_no_rls.sql
+18. 99_seed_admin.sql (solo pruebas)
