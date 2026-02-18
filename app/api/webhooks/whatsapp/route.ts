@@ -43,8 +43,18 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const reason = !mode
+    ? "missing_mode"
+    : mode !== "subscribe"
+      ? "invalid_mode"
+      : !token
+        ? "missing_verify_token_query"
+        : !verifyToken
+          ? "missing_verify_token_env"
+          : "verify_token_mismatch";
+
   return NextResponse.json(
-    { error: "Webhook verification failed" },
+    { error: "Webhook verification failed", reason },
     { status: 403 }
   );
 }
