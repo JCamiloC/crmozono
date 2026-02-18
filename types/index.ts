@@ -86,6 +86,10 @@ export type MessageTemplate = {
   name: string;
   preview: string;
   body: string;
+  sendMode?: "auto" | "text" | "template";
+  providerTemplateName?: string | null;
+  providerLanguageCode?: string | null;
+  defaultVariables?: Record<string, string>;
 };
 
 export type CampaignStatus =

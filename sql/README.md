@@ -22,4 +22,5 @@ Orden recomendado:
 17. 09_permissions_no_rls.sql
 18. 18_seed_colombia_assignments.sql (opcional pruebas)
 19. 19_webhook_idempotency.sql
-20. 99_seed_admin.sql (solo pruebas)
+20. 20_whatsapp_runtime_config.sql
+21. 99_seed_admin.sql (solo pruebas)

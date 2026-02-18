@@ -22,6 +22,16 @@ type MessageTemplateRow = {
 	name: string;
 	preview: string;
 	body: string;
+	send_mode?: string | null;
+	provider_template_name?: string | null;
+	provider_language_code?: string | null;
+	variable_defaults?: Record<string, unknown> | null;
+};
+
+export type SendMessageOptions = {
+	templateId?: string;
+	customVariables?: Record<string, string>;
+	forceMode?: "auto" | "text" | "template";
 };
 
 const defaultTemplates: MessageTemplate[] = [
@@ -101,11 +111,27 @@ const mapMessageRow = (row: MessageRow): Message => {
 };
 
 const mapTemplateRow = (row: MessageTemplateRow): MessageTemplate => {
+	const defaultVariables: Record<string, string> = {};
+	if (row.variable_defaults && typeof row.variable_defaults === "object") {
+		for (const [key, value] of Object.entries(row.variable_defaults)) {
+			if (typeof value === "string") {
+				defaultVariables[key] = value;
+			}
+		}
+	}
+
 	return {
 		id: row.id,
 		name: row.name,
 		preview: row.preview,
 		body: row.body,
+		sendMode:
+			row.send_mode === "auto" || row.send_mode === "text" || row.send_mode === "template"
+				? row.send_mode
+				: undefined,
+		providerTemplateName: row.provider_template_name ?? null,
+		providerLanguageCode: row.provider_language_code ?? null,
+		defaultVariables,
 	};
 };
 
@@ -159,45 +185,42 @@ export const listMessages = async (conversationId: string): Promise<Message[]> =
 
 export const sendMessage = async (
 	conversationId: string,
-	body: string
+	body: string,
+	options?: SendMessageOptions
 ): Promise<Message> => {
-	const supabase = createSupabaseBrowserClient();
-	const { data, error } = await supabase
-		.from("messages")
-		.insert({
-			conversation_id: conversationId,
+	const response = await fetch("/api/whatsapp/messages", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			conversationId,
 			body,
-			direction: "outbound",
-		})
-		.select("id, conversation_id, body, direction, created_at")
-		.single();
+			templateId: options?.templateId,
+			customVariables: options?.customVariables,
+			forceMode: options?.forceMode,
+		}),
+	});
 
-	if (error || !data) {
-		throw new Error(error?.message ?? "No se pudo enviar el mensaje");
+	const payload = (await response.json().catch(() => null)) as
+		| {
+			error?: string;
+			message?: MessageRow;
+		  }
+		| null;
+
+	if (!response.ok || !payload?.message) {
+		throw new Error(payload?.error ?? "No se pudo enviar el mensaje a WhatsApp");
 	}
 
-	const message = mapMessageRow(data as MessageRow);
-
-	const { error: updateConversationError } = await supabase
-		.from("conversations")
-		.update({
-			last_message: body,
-			updated_at: message.createdAt,
-		})
-		.eq("id", conversationId);
-
-	if (updateConversationError) {
-		console.error("[messages] update conversation after send error", updateConversationError);
-	}
-
-	return message;
+	return mapMessageRow(payload.message);
 };
 
 export const listTemplates = async (): Promise<MessageTemplate[]> => {
 	const supabase = createSupabaseBrowserClient();
 	const { data, error } = await supabase
 		.from("message_templates")
-		.select("id, name, preview, body")
+		.select("*")
 		.order("name", { ascending: true });
 
 	if (error || !data) {

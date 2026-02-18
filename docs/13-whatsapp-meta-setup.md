@@ -133,7 +133,69 @@ Cuando llega un mensaje entrante:
 - `11_messages.sql`
 - `12_message_templates.sql`
 - `17_webhook_events.sql`
+- `20_whatsapp_runtime_config.sql`
 - `09_permissions_no_rls.sql` (solo desarrollo)
+
+---
+
+## 6.1) Configuración sin redeploy (runtime)
+
+El envío outbound de WhatsApp ahora se controla desde base de datos.
+
+Tabla: `whatsapp_runtime_config`
+
+Claves principales:
+
+- `outbound_default_mode` → `auto` | `text` | `template`
+- `outbound_conversation_window_hours` → horas de ventana para texto libre
+- `outbound_allow_text_outside_window` → `true/false`
+- `outbound_require_template_outside_window` → `true/false`
+- `outbound_default_template_language` → idioma por defecto (`es`, `es_CO`, etc.)
+- `outbound_dry_run` → `true` para simular envío sin llamar Meta
+
+Ejemplos rápidos:
+
+```sql
+update public.whatsapp_runtime_config
+set value = '"template"'::jsonb, updated_at = now()
+where key = 'outbound_default_mode';
+
+update public.whatsapp_runtime_config
+set value = 'true'::jsonb, updated_at = now()
+where key = 'outbound_dry_run';
+```
+
+---
+
+## 6.2) Plantillas sin cambios de código
+
+La tabla `message_templates` soporta campos runtime:
+
+- `send_mode`: `auto | text | template`
+- `provider_template_name`: nombre exacto de plantilla aprobada en Meta
+- `provider_language_code`: idioma (ej. `es`)
+- `variable_defaults`: JSON con variables por defecto
+
+Ejemplo:
+
+```sql
+update public.message_templates
+set
+   send_mode = 'template',
+   provider_template_name = 'seguimiento_v2',
+   provider_language_code = 'es',
+   variable_defaults = '{"agente":"Equipo SuperOzono"}'::jsonb
+where name = 'Seguimiento';
+```
+
+Placeholders soportados en `body`:
+
+- `{{nombre}}` / `[[nombre]]`
+- `{{first_name}}`
+- `{{telefono}}`
+- `{{pais}}`
+- `{{estado}}`
+- `{{fecha}}`
 
 ---
 

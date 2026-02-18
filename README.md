@@ -9,7 +9,8 @@ CRM de ventas multi-país con Next.js + Supabase + WhatsApp Business API.
 - SQL base versionado en `/sql`.
 - Servicios de `leads` y `tasks` conectados a Supabase real (sin RLS por ahora).
 - Servicios de `mensajes`, `llamadas`, `campañas` y `auditoría` conectados a Supabase real.
-- Integraciones avanzadas (WhatsApp Cloud API real, webhooks completos, Calling API) en proceso.
+- WhatsApp inbound (webhook) y outbound (send) conectados a Cloud API.
+- Configuración runtime de WhatsApp en BD (`whatsapp_runtime_config`) para ajustes sin redeploy.
 
 ## Decisión de implementación: RLS al final
 
@@ -42,5 +43,5 @@ Revisar `.env.example` y definir en `.env`:
 
 1. Ejecutar migraciones SQL nuevas (`10` a `16`) y permisos de desarrollo (`09_permissions_no_rls.sql`).
 2. Completar webhook de WhatsApp (persistencia + clasificación + reintentos).
-3. Conectar envío real de WhatsApp Cloud API (hoy sigue en modo interno).
+3. Completar automatizaciones de mensajería por estado/SLA usando configuración runtime.
 4. Fase final: RLS completa + pruebas de seguridad + salida a producción.
