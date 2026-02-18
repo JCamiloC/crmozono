@@ -1,11 +1,20 @@
 import type { Lead, LeadStatus, LeadStatusHistory } from "../../types";
 import LeadStatusBadge from "./LeadStatusBadge";
+import { useState } from "react";
+
+type CreateTaskPayload = {
+  titulo: string;
+  tipoTarea: string;
+  descripcion: string;
+  fechaProgramada: string;
+};
 
 type LeadDetailPanelProps = {
   lead: Lead | null;
   onChangeStatus: (status: LeadStatus) => void;
   onCloseLead: () => void;
   onSimulateCall: () => void;
+  onCreateTask: (payload: CreateTaskPayload) => Promise<void>;
   lastCallNote: string | null;
   history: LeadStatusHistory[];
   slaDaysRemaining: number;
@@ -18,12 +27,51 @@ export default function LeadDetailPanel({
   onChangeStatus,
   onCloseLead,
   onSimulateCall,
+  onCreateTask,
   lastCallNote,
   history,
   slaDaysRemaining,
   isSlaBreached,
   errorMessage,
 }: LeadDetailPanelProps) {
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskType, setTaskType] = useState("seguimiento");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskDate, setTaskDate] = useState("");
+  const [creatingTask, setCreatingTask] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
+  const [taskSuccess, setTaskSuccess] = useState<string | null>(null);
+
+  const handleCreateTask = async () => {
+    if (!taskTitle.trim() || !taskDate) {
+      setTaskError("Título y fecha programada son obligatorios.");
+      return;
+    }
+
+    setTaskError(null);
+    setTaskSuccess(null);
+    setCreatingTask(true);
+
+    try {
+      await onCreateTask({
+        titulo: taskTitle.trim(),
+        tipoTarea: taskType,
+        descripcion: taskDescription.trim(),
+        fechaProgramada: new Date(taskDate).toISOString(),
+      });
+
+      setTaskTitle("");
+      setTaskType("seguimiento");
+      setTaskDescription("");
+      setTaskDate("");
+      setTaskSuccess("Tarea creada correctamente.");
+    } catch (error) {
+      setTaskError(error instanceof Error ? error.message : "No se pudo crear la tarea.");
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   if (!lead) {
     return (
       <div className="rounded-2xl border border-dashed border-botanical-200 bg-white p-6 text-sm text-botanical-600">
@@ -116,6 +164,53 @@ export default function LeadDetailPanel({
       >
         Cerrar lead (venta efectiva)
       </button>
+
+      <div className="rounded-2xl border border-botanical-100 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
+          Crear tarea
+        </p>
+        <div className="mt-3 grid gap-3">
+          <input
+            value={taskTitle}
+            onChange={(event) => setTaskTitle(event.target.value)}
+            placeholder="Título"
+            className="rounded-xl border border-botanical-100 px-3 py-2 text-sm text-botanical-800"
+          />
+          <select
+            value={taskType}
+            onChange={(event) => setTaskType(event.target.value)}
+            className="rounded-xl border border-botanical-100 px-3 py-2 text-sm text-botanical-800"
+          >
+            <option value="seguimiento">Seguimiento</option>
+            <option value="llamada">Llamada</option>
+            <option value="recordatorio">Recordatorio</option>
+            <option value="cierre">Cierre</option>
+          </select>
+          <input
+            type="datetime-local"
+            value={taskDate}
+            onChange={(event) => setTaskDate(event.target.value)}
+            className="rounded-xl border border-botanical-100 px-3 py-2 text-sm text-botanical-800"
+          />
+          <textarea
+            value={taskDescription}
+            onChange={(event) => setTaskDescription(event.target.value)}
+            placeholder="Descripción (opcional)"
+            rows={3}
+            className="rounded-xl border border-botanical-100 px-3 py-2 text-sm text-botanical-800"
+          />
+          {taskError ? <p className="text-xs text-rose-600">{taskError}</p> : null}
+          {taskSuccess ? <p className="text-xs text-emerald-600">{taskSuccess}</p> : null}
+          <button
+            type="button"
+            onClick={handleCreateTask}
+            disabled={creatingTask}
+            className="rounded-xl bg-botanical-700 px-4 py-2 text-sm font-semibold text-white shadow-soft transition hover:bg-botanical-800 disabled:opacity-60"
+          >
+            {creatingTask ? "Creando..." : "Crear tarea"}
+          </button>
+        </div>
+      </div>
 
       <div className="rounded-2xl border border-botanical-100 bg-botanical-50 p-4 text-sm text-botanical-700">
         <div className="flex items-center justify-between gap-3">

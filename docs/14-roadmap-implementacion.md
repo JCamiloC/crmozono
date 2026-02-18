@@ -23,7 +23,21 @@ Estado: **iniciada**
 - Regla de SLA de 5 días con alerta y cierre por tiempo
 - Alertas internas para tareas vencidas/próximas
 
-Estado: pendiente
+Estado: en progreso
+
+Implementado:
+
+- Automatización manual de no respuesta (`/api/automations/no-response`) con runtime config en BD.
+- Configuración en minutos (ideal pruebas 5-10 min) desde módulo Configuración.
+- Creación automática de tarea `seguimiento_automatico` para leads en `contactado/seguimiento` sin respuesta inbound.
+- Cierre automático por SLA configurable (`automations_sla_close_days`) con estado `cerrado_tiempo`.
+- Cancelación automática de tareas pendientes al cerrar lead por SLA.
+- Alertas internas UI para SLA por vencer/vencido y tareas por vencer/vencidas.
+
+Pendiente de esta fase:
+
+- Ejecución programada (cron) en producción (configurada en `vercel.json`, requiere deploy).
+- Afinar notificaciones in-app/push (no solo alerta visual en vistas).
 
 ---
 

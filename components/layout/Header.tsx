@@ -3,14 +3,25 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "../../services/auth/auth.service";
+import type { UserProfile } from "../../types";
 
 type HeaderProps = {
   onToggleSidebar: () => void;
+  profile: UserProfile | null;
 };
 
-export default function Header({ onToggleSidebar }: HeaderProps) {
+export default function Header({ onToggleSidebar, profile }: HeaderProps) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const userLabel = profile?.email ?? "Usuario autenticado";
+  const initials = (() => {
+    if (!profile?.email) {
+      return "US";
+    }
+    const base = profile.email.split("@")[0] ?? "us";
+    return base.slice(0, 2).toUpperCase();
+  })();
 
   const handleSignOut = async () => {
     await signOut();
@@ -38,15 +49,15 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
       </div>
       <div className="relative flex items-center gap-3">
         <div className="hidden text-right text-xs text-botanical-700 sm:block">
-          <p className="font-semibold text-botanical-900">Usuario autenticado</p>
-          <p className="text-botanical-600">admin@crm.local</p>
+          <p className="font-semibold text-botanical-900">{profile?.role ?? "usuario"}</p>
+          <p className="text-botanical-600">{userLabel}</p>
         </div>
         <button
           type="button"
           onClick={() => setMenuOpen((value) => !value)}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-botanical-200 text-xs font-semibold text-botanical-800"
         >
-          AD
+          {initials}
         </button>
         {menuOpen ? (
           <div className="absolute right-0 top-12 z-20 w-40 rounded-xl border border-botanical-100 bg-white p-2 shadow-soft">

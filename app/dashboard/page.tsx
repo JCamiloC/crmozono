@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { listAuditLogs } from "../../services/auditoria.service";
 import { listCampaigns } from "../../services/campañas.service";
+import { getSlaCloseAutomationConfig } from "../../services/configuracion.service";
 import { listLeads } from "../../services/leads.service";
 import { listCalls } from "../../services/llamadas.service";
 import { listTasks } from "../../services/tareas.service";
@@ -53,6 +54,7 @@ export default function DashboardPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [referenceNowMs, setReferenceNowMs] = useState(0);
+  const [slaDays, setSlaDays] = useState(5);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -62,13 +64,14 @@ export default function DashboardPage() {
       setErrorMessage(null);
 
       try {
-        const [leadsData, tasksData, callsData, campaignsData, auditData] =
+        const [leadsData, tasksData, callsData, campaignsData, auditData, slaConfig] =
           await Promise.all([
             listLeads(),
             listTasks(),
             listCalls(),
             listCampaigns(),
             listAuditLogs(),
+            getSlaCloseAutomationConfig(),
           ]);
 
         setLeads(leadsData);
@@ -76,6 +79,7 @@ export default function DashboardPage() {
         setCalls(callsData);
         setCampaigns(campaignsData);
         setAuditLogs(auditData);
+        setSlaDays(slaConfig.days);
         setReferenceNowMs(Date.now());
       } catch (error) {
         setErrorMessage(
@@ -112,7 +116,18 @@ export default function DashboardPage() {
       const ageDays =
         (safeNowMs - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
       return (
-        ageDays > 5 &&
+        ageDays > slaDays &&
+        lead.estadoActual !== "venta" &&
+        lead.estadoActual !== "cerrado_tiempo"
+      );
+    }).length;
+
+    const slaDueSoonLeads = leads.filter((lead) => {
+      const ageDays =
+        (safeNowMs - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+      return (
+        ageDays >= slaDays - 1 &&
+        ageDays <= slaDays &&
         lead.estadoActual !== "venta" &&
         lead.estadoActual !== "cerrado_tiempo"
       );
@@ -176,6 +191,7 @@ export default function DashboardPage() {
       activeLeads,
       totalSales,
       conversionRate,
+      slaDueSoonLeads,
       slaBreachedLeads,
       overdueTasks,
       callEffectiveness,
@@ -187,7 +203,7 @@ export default function DashboardPage() {
       upcomingTasks,
       recentAuditLogs: auditLogs.slice(0, 8),
     };
-  }, [auditLogs, calls, campaigns, leads, referenceNowMs, tasks]);
+  }, [auditLogs, calls, campaigns, leads, referenceNowMs, slaDays, tasks]);
 
   if (loading) {
     return (
@@ -229,7 +245,7 @@ export default function DashboardPage() {
         <KpiCard
           title="Alertas SLA"
           value={`${dashboardData.slaBreachedLeads}`}
-          subtitle="Leads con más de 5 días sin cierre"
+          subtitle={`Leads con más de ${slaDays} días sin cierre`}
         />
         <KpiCard
           title="Tareas Vencidas"
@@ -237,6 +253,22 @@ export default function DashboardPage() {
           subtitle="Requieren acción prioritaria"
         />
       </div>
+
+      {(dashboardData.slaDueSoonLeads > 0 || dashboardData.slaBreachedLeads > 0) && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p className="font-semibold">SLA por vencer</p>
+            <p>
+              {dashboardData.slaDueSoonLeads} lead(s) están dentro de la ventana de 1 día para
+              cierre SLA.
+            </p>
+          </div>
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            <p className="font-semibold">SLA vencido</p>
+            <p>{dashboardData.slaBreachedLeads} lead(s) superaron el SLA configurado.</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">

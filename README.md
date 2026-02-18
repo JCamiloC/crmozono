@@ -11,6 +11,7 @@ CRM de ventas multi-país con Next.js + Supabase + WhatsApp Business API.
 - Servicios de `mensajes`, `llamadas`, `campañas` y `auditoría` conectados a Supabase real.
 - WhatsApp inbound (webhook) y outbound (send) conectados a Cloud API.
 - Configuración runtime de WhatsApp en BD (`whatsapp_runtime_config`) para ajustes sin redeploy.
+- Automatización de no respuesta disponible por endpoint y cron (`/api/automations/no-response`).
 
 ## Decisión de implementación: RLS al final
 
@@ -31,6 +32,8 @@ Revisar `.env.example` y definir en `.env`:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `WHATSAPP_WEBHOOK_VERIFY_TOKEN` (para verificación GET de webhook)
 - `WHATSAPP_APP_SECRET` (para validar firma en webhook POST)
+- `AUTOMATIONS_RUN_TOKEN` (opcional: proteger ejecución manual de automatizaciones)
+- `CRON_SECRET` (si usas Vercel Cron con header Bearer)
 
 ## Scripts
 

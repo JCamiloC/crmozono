@@ -122,6 +122,19 @@ export const createTask = async (
 ): Promise<Task> => {
   const supabase = createSupabaseBrowserClient();
 
+  const { data: existingPendingTask } = await supabase
+    .from("tasks")
+    .select("id")
+    .eq("lead_id", payload.leadId)
+    .eq("tipo_tarea", payload.tipoTarea)
+    .eq("estado", "pendiente")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingPendingTask) {
+    throw new Error("Ya existe una tarea pendiente de este tipo para el lead");
+  }
+
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -139,6 +152,9 @@ export const createTask = async (
     .single();
 
   if (error || !data) {
+    if (error?.code === "23505") {
+      throw new Error("Ya existe una tarea pendiente de este tipo para el lead");
+    }
     throw new Error(error?.message ?? "No se pudo crear la tarea");
   }
 

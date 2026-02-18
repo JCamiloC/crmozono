@@ -39,3 +39,22 @@ export const fetchUserProfile = async (userId: string) => {
 
   return { ...result, data: profile };
 };
+
+export const getCurrentUserProfile = async (): Promise<UserProfile | null> => {
+  const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return null;
+  }
+
+  const profileResult = await fetchUserProfile(user.id);
+  if (profileResult.error || !profileResult.data) {
+    return null;
+  }
+
+  return profileResult.data;
+};

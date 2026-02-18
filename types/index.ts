@@ -176,7 +176,8 @@ export type AuditAction =
   | "campaign_created"
   | "campaign_send_simulated"
   | "message_sent"
-  | "call_result_registered";
+  | "call_result_registered"
+  | "settings_updated";
 
 export type AuditLog = {
   id: string;

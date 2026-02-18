@@ -24,6 +24,12 @@ export default function UserAssignmentsPanel({
   const [drafts, setDrafts] = useState<Record<string, EditableAssignment>>({});
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [searchValue, setSearchValue] = useState("");
+  const [roleFilter, setRoleFilter] = useState<Role | "all">("all");
+  const [orderValue, setOrderValue] = useState<"email_asc" | "email_desc" | "role">("email_asc");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const PAGE_SIZE = 8;
 
   useEffect(() => {
     const nextDrafts = users.reduce<Record<string, EditableAssignment>>((accumulator, user) => {
@@ -45,6 +51,43 @@ export default function UserAssignmentsPanel({
       return draft.role !== user.role || draft.countryId !== user.countryId;
     });
   }, [drafts, users]);
+
+  const processedUsers = useMemo(() => {
+    const normalizedSearch = searchValue.trim().toLowerCase();
+    const filtered = users.filter((user) => {
+      const emailValue = (user.email ?? "").toLowerCase();
+      const countryValue = (user.countryName ?? "").toLowerCase();
+      const searchMatch =
+        !normalizedSearch ||
+        emailValue.includes(normalizedSearch) ||
+        countryValue.includes(normalizedSearch) ||
+        user.id.toLowerCase().includes(normalizedSearch);
+      const roleMatch = roleFilter === "all" || user.role === roleFilter;
+      return searchMatch && roleMatch;
+    });
+
+    filtered.sort((a, b) => {
+      if (orderValue === "email_desc") {
+        return (b.email ?? b.id).localeCompare(a.email ?? a.id, "es");
+      }
+
+      if (orderValue === "role") {
+        return a.role.localeCompare(b.role, "es");
+      }
+
+      return (a.email ?? a.id).localeCompare(b.email ?? b.id, "es");
+    });
+
+    return filtered;
+  }, [users, searchValue, roleFilter, orderValue]);
+
+  const totalPages = Math.max(1, Math.ceil(processedUsers.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedUsers = useMemo(() => {
+    const start = (safeCurrentPage - 1) * PAGE_SIZE;
+    return processedUsers.slice(start, start + PAGE_SIZE);
+  }, [processedUsers, safeCurrentPage]);
 
   const handleSaveUser = async (userId: string) => {
     const draft = drafts[userId];
@@ -76,6 +119,45 @@ export default function UserAssignmentsPanel({
         </div>
       ) : null}
 
+      <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-3">
+        <input
+          value={searchValue}
+          onChange={(event) => {
+            setSearchValue(event.target.value);
+            setCurrentPage(1);
+          }}
+          placeholder="Buscar usuario o país"
+          className="rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800 placeholder:text-botanical-400"
+        />
+        <select
+          value={roleFilter}
+          onChange={(event) => {
+            setRoleFilter(event.target.value as Role | "all");
+            setCurrentPage(1);
+          }}
+          className="rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800"
+        >
+          <option value="all">Todos los roles</option>
+          {roleOptions.map((roleOption) => (
+            <option key={roleOption} value={roleOption}>
+              {roleOption}
+            </option>
+          ))}
+        </select>
+        <select
+          value={orderValue}
+          onChange={(event) => {
+            setOrderValue(event.target.value as typeof orderValue);
+            setCurrentPage(1);
+          }}
+          className="rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800"
+        >
+          <option value="email_asc">Usuario A-Z</option>
+          <option value="email_desc">Usuario Z-A</option>
+          <option value="role">Rol</option>
+        </select>
+      </div>
+
       <div className="mt-4 overflow-hidden rounded-xl border border-botanical-100">
         <table className="w-full text-left text-sm">
           <thead className="bg-botanical-50 text-xs uppercase tracking-[0.08em] text-botanical-600">
@@ -87,14 +169,14 @@ export default function UserAssignmentsPanel({
             </tr>
           </thead>
           <tbody>
-            {users.length === 0 ? (
+            {paginatedUsers.length === 0 ? (
               <tr>
                 <td className="px-4 py-4 text-botanical-600" colSpan={4}>
-                  No hay perfiles disponibles.
+                  No hay usuarios para los filtros actuales.
                 </td>
               </tr>
             ) : (
-              users.map((user) => {
+              paginatedUsers.map((user) => {
                 const draft = drafts[user.id] ?? {
                   role: user.role,
                   countryId: user.countryId,
@@ -168,6 +250,32 @@ export default function UserAssignmentsPanel({
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 ? (
+        <div className="mt-3 flex items-center justify-between text-xs text-botanical-700">
+          <span>
+            Página {safeCurrentPage} de {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={safeCurrentPage === 1}
+              className="rounded-lg border border-botanical-300 bg-white px-3 py-1.5 disabled:opacity-60"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={safeCurrentPage === totalPages}
+              className="rounded-lg border border-botanical-300 bg-white px-3 py-1.5 disabled:opacity-60"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <p className="mt-3 text-xs text-botanical-600">
         {hasChanges

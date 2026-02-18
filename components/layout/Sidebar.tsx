@@ -1,21 +1,25 @@
 import Link from "next/link";
+import type { Role } from "../../types";
 
 const navigation = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Leads", href: "/dashboard/leads" },
-  { label: "Tareas", href: "/dashboard/tareas" },
-  { label: "Llamadas", href: "/dashboard/llamadas" },
-  { label: "Mensajes", href: "/dashboard/mensajes" },
-  { label: "Campañas", href: "/dashboard/campanas" },
-  { label: "Configuración", href: "/dashboard/configuracion" },
+  { label: "Dashboard", href: "/dashboard", roles: ["superadmin", "admin", "agente"] as Role[] },
+  { label: "Leads", href: "/dashboard/leads", roles: ["superadmin", "admin", "agente"] as Role[] },
+  { label: "Tareas", href: "/dashboard/tareas", roles: ["superadmin", "admin", "agente"] as Role[] },
+  { label: "Llamadas", href: "/dashboard/llamadas", roles: ["superadmin", "admin", "agente"] as Role[] },
+  { label: "Mensajes", href: "/dashboard/mensajes", roles: ["superadmin", "admin", "agente"] as Role[] },
+  { label: "Campañas", href: "/dashboard/campanas", roles: ["superadmin", "admin"] as Role[] },
+  { label: "Configuración", href: "/dashboard/configuracion", roles: ["superadmin", "admin"] as Role[] },
 ];
 
 type SidebarProps = {
   isOpen: boolean;
   onClose: () => void;
+  role: Role;
 };
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, role }: SidebarProps) {
+  const allowedNavigation = navigation.filter((item) => item.roles.includes(role));
+
   return (
     <>
       <div
@@ -39,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         </div>
         <nav className="flex flex-col gap-2">
-          {navigation.map((item) => (
+          {allowedNavigation.map((item) => (
             <Link
               key={item.href}
               href={item.href}

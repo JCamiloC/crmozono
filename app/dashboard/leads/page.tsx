@@ -11,8 +11,10 @@ import {
   listLeads,
   updateLeadStatus,
 } from "../../../services/leads/leads.service";
+import { getSlaCloseAutomationConfig } from "../../../services/configuracion.service";
 import { listCallsByLead } from "../../../services/llamadas.service";
 import { addAuditLog } from "../../../services/auditoria.service";
+import { createTask } from "../../../services/tasks/tasks.service";
 
 const callNotes = [
   "Llamada efectiva. Cliente interesado.",
@@ -28,14 +30,22 @@ export default function LeadsPage() {
   const [searchValue, setSearchValue] = useState("");
   const [statusValue, setStatusValue] = useState<LeadStatus | "all">("all");
   const [countryValue, setCountryValue] = useState<string | "all">("all");
+  const [orderValue, setOrderValue] = useState<
+    "created_desc" | "created_asc" | "name_asc" | "name_desc" | "sla_urgent"
+  >("created_desc");
+  const [currentPage, setCurrentPage] = useState(1);
   const [lastCallNote, setLastCallNote] = useState<string | null>(null);
   const [history, setHistory] = useState<LeadStatusHistory[]>([]);
+  const [slaDays, setSlaDays] = useState(5);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     const load = async () => {
-      const data = await listLeads();
+      const [data, slaConfig] = await Promise.all([listLeads(), getSlaCloseAutomationConfig()]);
       setLeads(data);
+      setSlaDays(slaConfig.days);
       if (data.length > 0) {
         setSelectedLeadId(data[0].id);
       }
@@ -69,9 +79,70 @@ export default function LeadsPage() {
     });
   }, [leads, searchValue, statusValue, countryValue]);
 
+  const sortedLeads = useMemo(() => {
+    const sorted = [...filteredLeads];
+    sorted.sort((a, b) => {
+      if (orderValue === "created_asc") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+
+      if (orderValue === "name_asc") {
+        return (a.nombre ?? "").localeCompare(b.nombre ?? "", "es");
+      }
+
+      if (orderValue === "name_desc") {
+        return (b.nombre ?? "").localeCompare(a.nombre ?? "", "es");
+      }
+
+      if (orderValue === "sla_urgent") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return sorted;
+  }, [filteredLeads, orderValue]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedLeads.length / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedLeads = useMemo(() => {
+    const start = (safeCurrentPage - 1) * PAGE_SIZE;
+    return sortedLeads.slice(start, start + PAGE_SIZE);
+  }, [sortedLeads, safeCurrentPage]);
+
   const selectedLead = useMemo(
     () => leads.find((lead) => lead.id === selectedLeadId) ?? null,
     [leads, selectedLeadId]
+  );
+
+  const activeLeads = useMemo(
+    () =>
+      leads.filter(
+        (lead) => lead.estadoActual !== "venta" && lead.estadoActual !== "cerrado_tiempo"
+      ),
+    [leads]
+  );
+
+  const slaBreachedCount = useMemo(
+    () =>
+      activeLeads.filter((lead) => {
+        const ageDays =
+          (referenceNowMs - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+        return ageDays > slaDays;
+      }).length,
+    [activeLeads, referenceNowMs, slaDays]
+  );
+
+  const slaDueSoonCount = useMemo(
+    () =>
+      activeLeads.filter((lead) => {
+        const ageDays =
+          (referenceNowMs - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+        return ageDays >= slaDays - 1 && ageDays <= slaDays;
+      }).length,
+    [activeLeads, referenceNowMs, slaDays]
   );
 
   const handleStatusChange = async (status: LeadStatus) => {
@@ -133,10 +204,40 @@ export default function LeadsPage() {
     }
   };
 
+  const handleCreateTask = async (payload: {
+    titulo: string;
+    tipoTarea: string;
+    descripcion: string;
+    fechaProgramada: string;
+  }) => {
+    if (!selectedLead) {
+      return;
+    }
+
+    const task = await createTask({
+      leadId: selectedLead.id,
+      leadNombre: selectedLead.nombre ?? "Lead sin nombre",
+      agenteId: selectedLead.agenteId,
+      titulo: payload.titulo,
+      tipoTarea: payload.tipoTarea,
+      descripcion: payload.descripcion || null,
+      fechaProgramada: payload.fechaProgramada,
+      estado: "pendiente",
+    });
+
+    await addAuditLog(
+      "task_created",
+      "task",
+      task.id,
+      `Tarea creada desde lead ${selectedLead.id}`,
+      "Agente"
+    );
+  };
+
   const slaDaysRemaining = selectedLead
     ? Math.max(
         0,
-        5 -
+        slaDays -
           Math.floor(
             (referenceNowMs - new Date(selectedLead.createdAt).getTime()) /
               (1000 * 60 * 60 * 24)
@@ -146,7 +247,7 @@ export default function LeadsPage() {
 
   const isSlaBreached = selectedLead
     ? referenceNowMs - new Date(selectedLead.createdAt).getTime() >
-      1000 * 60 * 60 * 24 * 5
+      1000 * 60 * 60 * 24 * slaDays
     : false;
 
   return (
@@ -160,30 +261,101 @@ export default function LeadsPage() {
 
       <LeadFilters
         searchValue={searchValue}
-        onSearchChange={setSearchValue}
+        onSearchChange={(value) => {
+          setSearchValue(value);
+          setCurrentPage(1);
+        }}
         statusValue={statusValue}
-        onStatusChange={setStatusValue}
+        onStatusChange={(value) => {
+          setStatusValue(value);
+          setCurrentPage(1);
+        }}
         countryValue={countryValue}
-        onCountryChange={setCountryValue}
+        onCountryChange={(value) => {
+          setCountryValue(value);
+          setCurrentPage(1);
+        }}
         countries={countries}
       />
 
+      {(slaDueSoonCount > 0 || slaBreachedCount > 0) && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p className="font-semibold">SLA por vencer</p>
+            <p>
+              {slaDueSoonCount} lead(s) están a menos de 1 día del límite de {slaDays} días.
+            </p>
+          </div>
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            <p className="font-semibold">SLA vencido</p>
+            <p>{slaBreachedCount} lead(s) ya superaron el límite configurado.</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
-            Leads activos
-          </p>
-          {filteredLeads.length === 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
+              Leads activos
+            </p>
+            <div className="flex items-center gap-2 text-xs text-botanical-700">
+              <span>Ordenar por</span>
+              <select
+                value={orderValue}
+                onChange={(event) => {
+                  setOrderValue(event.target.value as typeof orderValue);
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-botanical-200 bg-white px-2 py-1.5 text-xs text-botanical-800"
+              >
+                <option value="created_desc">Más recientes</option>
+                <option value="created_asc">Más antiguos</option>
+                <option value="name_asc">Nombre A-Z</option>
+                <option value="name_desc">Nombre Z-A</option>
+                <option value="sla_urgent">SLA más urgente</option>
+              </select>
+            </div>
+          </div>
+
+          {sortedLeads.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-botanical-200 bg-white p-6 text-sm text-botanical-600">
               No hay leads para los filtros actuales.
             </div>
           ) : (
-            <LeadTable
-              leads={filteredLeads}
-              selectedLeadId={selectedLeadId}
-              onSelect={setSelectedLeadId}
-              referenceNowMs={referenceNowMs}
-            />
+            <>
+              <LeadTable
+                leads={paginatedLeads}
+                selectedLeadId={selectedLeadId}
+                onSelect={setSelectedLeadId}
+                referenceNowMs={referenceNowMs}
+              />
+              {totalPages > 1 ? (
+                <div className="mt-2 flex items-center justify-between text-xs text-botanical-700">
+                  <span>
+                    Página {safeCurrentPage} de {totalPages}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={safeCurrentPage === 1}
+                      className="rounded-lg border border-botanical-300 bg-white px-3 py-1.5 disabled:opacity-60"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={safeCurrentPage === totalPages}
+                      className="rounded-lg border border-botanical-300 bg-white px-3 py-1.5 disabled:opacity-60"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
         <LeadDetailPanel
@@ -191,6 +363,7 @@ export default function LeadsPage() {
           onChangeStatus={handleStatusChange}
           onCloseLead={handleCloseLead}
           onSimulateCall={handleSimulateCall}
+          onCreateTask={handleCreateTask}
           lastCallNote={lastCallNote}
           history={history}
           slaDaysRemaining={slaDaysRemaining}

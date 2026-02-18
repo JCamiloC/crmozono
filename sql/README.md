@@ -23,4 +23,7 @@ Orden recomendado:
 18. 18_seed_colombia_assignments.sql (opcional pruebas)
 19. 19_webhook_idempotency.sql
 20. 20_whatsapp_runtime_config.sql
-21. 99_seed_admin.sql (solo pruebas)
+21. 21_automations_no_response_config.sql
+22. 22_tasks_pending_unique.sql
+23. 23_automations_sla_close_config.sql
+24. 99_seed_admin.sql (solo pruebas)
