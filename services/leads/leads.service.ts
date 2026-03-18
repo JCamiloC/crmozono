@@ -1,5 +1,5 @@
 import { createSupabaseBrowserClient } from "../../lib/supabase/client";
-import type { Lead, LeadStatus, LeadStatusHistory } from "../../types";
+import type { Lead, LeadOrigin, LeadStatus, LeadStatusHistory } from "../../types";
 
 type LeadRow = {
   id: string;
@@ -45,11 +45,25 @@ const VALID_LEAD_STATUS: LeadStatus[] = [
   "cerrado_tiempo",
 ];
 
+const VALID_LEAD_ORIGIN: LeadOrigin[] = ["whatsapp", "facebook_ads", "manual", "campaign"];
+
 const normalizeLeadStatus = (value: string): LeadStatus => {
   if (VALID_LEAD_STATUS.includes(value as LeadStatus)) {
     return value as LeadStatus;
   }
   return "nuevo";
+};
+
+const normalizeLeadOrigin = (value: string | null | undefined): LeadOrigin | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (VALID_LEAD_ORIGIN.includes(value as LeadOrigin)) {
+    return value as LeadOrigin;
+  }
+
+  return null;
 };
 
 const mapLeadRow = (row: LeadRow): Lead => {
@@ -58,7 +72,7 @@ const mapLeadRow = (row: LeadRow): Lead => {
     nombre: row.nombre,
     telefono: row.telefono,
     pais: row.pais,
-    origen: row.origen ?? null,
+    origen: normalizeLeadOrigin(row.origen),
     administradorId: row.administrador_id,
     agenteId: row.agente_id,
     estadoActual: normalizeLeadStatus(row.estado_actual),
