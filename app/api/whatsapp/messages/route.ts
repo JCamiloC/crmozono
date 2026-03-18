@@ -91,9 +91,9 @@ const isConversationInScope = async (
     return false;
   }
 
-  const leadData = Array.isArray((conversation as ConversationScopeRow).leads)
-    ? (conversation as ConversationScopeRow).leads?.[0]
-    : (conversation as ConversationScopeRow).leads;
+  const scopedConversation = conversation as ConversationScopeRow;
+  const scopedLeads = scopedConversation.leads;
+  const leadData = Array.isArray(scopedLeads) ? scopedLeads[0] : scopedLeads;
 
   if (!leadData) {
     return false;
