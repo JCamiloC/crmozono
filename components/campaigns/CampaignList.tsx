@@ -25,15 +25,17 @@ export default function CampaignList({
               : "border-botanical-100 bg-white hover:bg-botanical-50/70"
           }`}
         >
-          <div>
-            <p className="text-sm font-semibold text-botanical-900">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-botanical-900">
               {campaign.name}
             </p>
-            <p className="text-xs text-botanical-600">
+            <p className="truncate text-xs text-botanical-600">
               {campaign.segment}
             </p>
           </div>
-          <CampaignStatusBadge status={campaign.status} />
+          <div className="shrink-0">
+            <CampaignStatusBadge status={campaign.status} />
+          </div>
         </button>
       ))}
     </div>

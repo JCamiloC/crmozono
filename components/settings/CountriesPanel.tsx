@@ -112,7 +112,7 @@ export default function CountriesPanel({
         Configuración multi-país.
       </p>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_110px_auto]">
+      <div className="mt-4 grid gap-2 md:grid-cols-[1fr_110px_auto]">
         <input
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -162,7 +162,7 @@ export default function CountriesPanel({
                 className="rounded-2xl border border-botanical-100 bg-botanical-50 px-4 py-3 text-sm text-botanical-800"
               >
                 {isEditing ? (
-                  <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto_auto] sm:items-center">
+                  <div className="grid gap-2 md:grid-cols-[1fr_120px_auto_auto] md:items-center">
                     <input
                       value={editName}
                       onChange={(event) => setEditName(event.target.value)}
@@ -190,12 +190,12 @@ export default function CountriesPanel({
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-botanical-900">{country.name}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-botanical-900">{country.name}</p>
                       <p className="text-xs font-semibold text-botanical-600">{country.code}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => handleStartEdit(country)}

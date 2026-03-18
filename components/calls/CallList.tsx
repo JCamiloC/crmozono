@@ -21,13 +21,15 @@ export default function CallList({ calls, selectedId, onSelect }: CallListProps)
               : "border-botanical-100 bg-white hover:bg-botanical-50/70"
           }`}
         >
-          <div>
-            <p className="text-sm font-semibold text-botanical-900">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-botanical-900">
               {call.leadName}
             </p>
-            <p className="text-xs text-botanical-600">{call.leadPhone}</p>
+            <p className="break-all text-xs text-botanical-600">{call.leadPhone}</p>
           </div>
-          <CallStatusBadge result={call.result} />
+          <div className="shrink-0">
+            <CallStatusBadge result={call.result} />
+          </div>
         </button>
       ))}
     </div>

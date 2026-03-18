@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { APP_ROUTES } from "./lib/constants";
-import { isProtectedRoute } from "./lib/auth";
+import { getDefaultRouteForRole, isProtectedRoute } from "./lib/auth";
+import type { Role } from "./types";
 
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next();
@@ -29,8 +30,18 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname === APP_ROUTES.login && user) {
-    // TODO: Redireccionar según rol cuando se implemente lectura de perfil.
-    return NextResponse.redirect(new URL(APP_ROUTES.dashboard, request.url));
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const safeRole: Role =
+      profile?.role === "superadmin" || profile?.role === "admin" || profile?.role === "agente"
+        ? profile.role
+        : "agente";
+
+    return NextResponse.redirect(new URL(getDefaultRouteForRole(safeRole), request.url));
   }
 
   if (isProtectedRoute(pathname) && !user) {

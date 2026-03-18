@@ -341,12 +341,14 @@ const createLeadFromInboundPhone = async (
     .from("leads")
     .insert({
       nombre: contactName,
-      telefono: phone,
+      telefono: normalizePhone(phone),
       pais: assignment.countryName,
       administrador_id: assignment.adminId,
       agente_id: assignment.agentId,
       estado_actual: "nuevo",
       fecha_estado: new Date().toISOString(),
+      origen: "whatsapp",
+      created_by: null,
     })
     .select("id")
     .single();

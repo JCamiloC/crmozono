@@ -17,11 +17,14 @@ export type LeadStatus =
   | "no_interesado"
   | "cerrado_tiempo";
 
+export type LeadOrigin = "whatsapp" | "facebook_ads" | "manual" | "campaign";
+
 export type Lead = {
   id: string;
   nombre: string | null;
   telefono: string;
   pais: string;
+  origen?: LeadOrigin | null;
   administradorId: string;
   agenteId: string;
   estadoActual: LeadStatus;

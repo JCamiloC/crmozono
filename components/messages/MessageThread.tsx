@@ -19,7 +19,7 @@ export default function MessageThread({ messages }: MessageThreadProps) {
                 : "bg-botanical-50 text-botanical-800"
             }`}
           >
-            <p>{message.body}</p>
+            <p className="break-words">{message.body}</p>
             <p className="mt-2 text-xs opacity-70">
               {new Date(message.createdAt).toLocaleTimeString("es-ES", {
                 hour: "2-digit",

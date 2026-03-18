@@ -202,7 +202,7 @@ export default function MensajesPage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_2fr_1fr]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
               Conversaciones
@@ -264,7 +264,7 @@ export default function MensajesPage() {
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="min-w-0 flex flex-col gap-4">
           <div className="rounded-2xl border border-botanical-100 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
               Conversación activa
@@ -285,7 +285,7 @@ export default function MensajesPage() {
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <input
             value={templateSearch}
             onChange={(event) => {

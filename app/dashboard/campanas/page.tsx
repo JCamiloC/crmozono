@@ -125,7 +125,7 @@ export default function CampanasPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr_1fr]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
             Campañas
           </p>
@@ -201,9 +201,13 @@ export default function CampanasPage() {
           ) : null}
         </div>
 
-        <CampaignDetailPanel campaign={selectedCampaign} logs={logs} />
+        <div className="min-w-0">
+          <CampaignDetailPanel campaign={selectedCampaign} logs={logs} />
+        </div>
 
-        <CampaignForm onSubmit={handleCreateCampaign} />
+        <div className="min-w-0">
+          <CampaignForm onSubmit={handleCreateCampaign} />
+        </div>
       </div>
     </div>
   );

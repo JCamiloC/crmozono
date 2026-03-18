@@ -191,7 +191,7 @@ export default function TareasPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
               Tareas activas
@@ -254,13 +254,15 @@ export default function TareasPage() {
             </>
           )}
         </div>
-        <TaskDetailPanel
-          task={selectedTask}
-          onChangeStatus={handleStatusChange}
-          onSimulateReminder={handleSimulateReminder}
-          lastReminderNote={lastReminderNote}
-          history={history}
-        />
+        <div className="min-w-0">
+          <TaskDetailPanel
+            task={selectedTask}
+            onChangeStatus={handleStatusChange}
+            onSimulateReminder={handleSimulateReminder}
+            lastReminderNote={lastReminderNote}
+            history={history}
+          />
+        </div>
       </div>
     </div>
   );

@@ -150,6 +150,43 @@ export const listConversations = async (): Promise<Conversation[]> => {
 	return (data as ConversationRow[]).map(mapConversationRow);
 };
 
+export const getOrCreateConversationByLead = async (
+	leadId: string
+): Promise<Conversation> => {
+	const supabase = createSupabaseBrowserClient();
+
+	const { data: existingConversation, error: existingError } = await supabase
+		.from("conversations")
+		.select("id, lead_id, last_message, updated_at, leads(nombre, telefono)")
+		.eq("lead_id", leadId)
+		.maybeSingle();
+
+	if (existingError) {
+		throw new Error(existingError.message);
+	}
+
+	if (existingConversation) {
+		return mapConversationRow(existingConversation as ConversationRow);
+	}
+
+	const now = new Date().toISOString();
+	const { data: createdConversation, error: createError } = await supabase
+		.from("conversations")
+		.insert({
+			lead_id: leadId,
+			last_message: "Sin mensajes",
+			updated_at: now,
+		})
+		.select("id, lead_id, last_message, updated_at, leads(nombre, telefono)")
+		.single();
+
+	if (createError || !createdConversation) {
+		throw new Error(createError?.message ?? "No se pudo crear la conversación del lead");
+	}
+
+	return mapConversationRow(createdConversation as ConversationRow);
+};
+
 export const getConversationById = async (
 	conversationId: string
 ): Promise<Conversation | null> => {
@@ -181,6 +218,49 @@ export const listMessages = async (conversationId: string): Promise<Message[]> =
 	}
 
 	return (data as MessageRow[]).map(mapMessageRow);
+};
+
+export const appendManualMessageToConversation = async (
+	conversationId: string,
+	body: string,
+	direction: "inbound" | "outbound" = "outbound"
+): Promise<Message> => {
+	const supabase = createSupabaseBrowserClient();
+	const normalizedBody = body.trim();
+
+	if (!normalizedBody) {
+		throw new Error("El mensaje no puede estar vacío");
+	}
+
+	const now = new Date().toISOString();
+	const { data, error } = await supabase
+		.from("messages")
+		.insert({
+			conversation_id: conversationId,
+			body: normalizedBody,
+			direction,
+			created_at: now,
+		})
+		.select("id, conversation_id, body, direction, created_at")
+		.single();
+
+	if (error || !data) {
+		throw new Error(error?.message ?? "No se pudo registrar el mensaje");
+	}
+
+	const { error: conversationUpdateError } = await supabase
+		.from("conversations")
+		.update({
+			last_message: normalizedBody,
+			updated_at: now,
+		})
+		.eq("id", conversationId);
+
+	if (conversationUpdateError) {
+		console.error("[messages] conversation update after manual message error", conversationUpdateError);
+	}
+
+	return mapMessageRow(data as MessageRow);
 };
 
 export const sendMessage = async (

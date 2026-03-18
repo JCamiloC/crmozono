@@ -27,7 +27,7 @@ export default function CallDetailPanel({
         <h2 className="mt-2 text-2xl font-semibold text-botanical-900">
           {call.leadName}
         </h2>
-        <p className="text-sm text-botanical-600">{call.leadPhone}</p>
+        <p className="break-all text-sm text-botanical-600">{call.leadPhone}</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

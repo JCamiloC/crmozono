@@ -101,7 +101,7 @@ export default function LlamadasPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.6fr]">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-botanical-500">
             Historial reciente
           </p>
@@ -178,7 +178,9 @@ export default function LlamadasPage() {
             </div>
           ) : null}
         </div>
-        <CallDetailPanel call={selectedCall} onRegisterResult={handleRegisterResult} />
+        <div className="min-w-0">
+          <CallDetailPanel call={selectedCall} onRegisterResult={handleRegisterResult} />
+        </div>
       </div>
     </div>
   );

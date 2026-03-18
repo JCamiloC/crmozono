@@ -5,6 +5,11 @@ import "./globals.css";
 export const metadata: Metadata = {
 	title: "SuperOzono CRM",
 	description: "CRM de ventas multi-país con WhatsApp Business API",
+	icons: {
+		icon: "/SuperOzono.png",
+		shortcut: "/SuperOzono.png",
+		apple: "/SuperOzono.png",
+	},
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

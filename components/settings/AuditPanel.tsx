@@ -22,8 +22,8 @@ export default function AuditPanel({ logs }: AuditPanelProps) {
               <p className="text-xs text-botanical-500">
                 {new Date(log.createdAt).toLocaleString()}
               </p>
-              <p className="mt-1 font-semibold text-botanical-900">{log.summary}</p>
-              <p className="text-xs text-botanical-600">
+              <p className="mt-1 break-words font-semibold text-botanical-900">{log.summary}</p>
+              <p className="break-words text-xs text-botanical-600">
                 {log.actor} · {log.entityType} #{log.entityId}
               </p>
             </div>

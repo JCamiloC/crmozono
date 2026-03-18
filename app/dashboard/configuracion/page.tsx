@@ -311,60 +311,78 @@ export default function ConfiguracionPage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <RolesPanel roles={roles} />
-        <CountriesPanel
-          countries={countries}
-          onCreateCountry={handleCreateCountry}
-          onUpdateCountry={handleUpdateCountry}
-          onDeleteCountry={handleDeleteCountry}
+        <div className="min-w-0">
+          <RolesPanel roles={roles} />
+        </div>
+        <div className="min-w-0">
+          <CountriesPanel
+            countries={countries}
+            onCreateCountry={handleCreateCountry}
+            onUpdateCountry={handleUpdateCountry}
+            onDeleteCountry={handleDeleteCountry}
+          />
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <TemplateSettingsPanel
+          templates={templates}
+          onCreateTemplate={handleCreateTemplate}
+          onSaveTemplate={handleSaveTemplate}
+          onDeleteTemplate={handleDeleteTemplate}
         />
       </div>
 
-      <TemplateSettingsPanel
-        templates={templates}
-        onCreateTemplate={handleCreateTemplate}
-        onSaveTemplate={handleSaveTemplate}
-        onDeleteTemplate={handleDeleteTemplate}
-      />
-
-      <AutomationPanel
-        enabled={automationEnabled}
-        minutes={automationMinutes}
-        saving={savingAutomation}
-        running={runningAutomation}
-        onEnabledChange={setAutomationEnabled}
-        onMinutesChange={setAutomationMinutes}
-        onSave={handleSaveAutomationConfig}
-        onRunNow={handleRunAutomationNow}
-        runSummary={automationSummary}
-        errorMessage={null}
-      />
-
-      <SlaAutomationPanel
-        enabled={slaEnabled}
-        days={slaDays}
-        saving={savingSla}
-        running={runningSla}
-        onEnabledChange={setSlaEnabled}
-        onDaysChange={setSlaDays}
-        onSave={handleSaveSlaConfig}
-        onRunNow={handleRunSlaNow}
-        runSummary={slaSummary}
-        errorMessage={null}
-      />
-
-      <UserAssignmentsPanel
-        countries={countries}
-        users={users}
-        onSave={handleSaveUserAssignment}
-      />
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <SecurityPanel summary={securitySummary} />
-        <SettingsPlaceholder />
+      <div className="min-w-0">
+        <AutomationPanel
+          enabled={automationEnabled}
+          minutes={automationMinutes}
+          saving={savingAutomation}
+          running={runningAutomation}
+          onEnabledChange={setAutomationEnabled}
+          onMinutesChange={setAutomationMinutes}
+          onSave={handleSaveAutomationConfig}
+          onRunNow={handleRunAutomationNow}
+          runSummary={automationSummary}
+          errorMessage={null}
+        />
       </div>
 
-      <AuditPanel logs={auditLogs} />
+      <div className="min-w-0">
+        <SlaAutomationPanel
+          enabled={slaEnabled}
+          days={slaDays}
+          saving={savingSla}
+          running={runningSla}
+          onEnabledChange={setSlaEnabled}
+          onDaysChange={setSlaDays}
+          onSave={handleSaveSlaConfig}
+          onRunNow={handleRunSlaNow}
+          runSummary={slaSummary}
+          errorMessage={null}
+        />
+      </div>
+
+      <div className="min-w-0">
+        <UserAssignmentsPanel
+          countries={countries}
+          users={users}
+          onSave={handleSaveUserAssignment}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <div className="min-w-0">
+          <SecurityPanel summary={securitySummary} />
+        </div>
+        <div className="min-w-0">
+          <SettingsPlaceholder />
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <AuditPanel logs={auditLogs} />
+      </div>
     </div>
   );
 }

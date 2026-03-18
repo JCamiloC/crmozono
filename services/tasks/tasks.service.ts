@@ -100,6 +100,24 @@ export const listTasks = async (): Promise<Task[]> => {
   return (data as TaskRow[]).map(mapTaskRow);
 };
 
+export const listTasksByLead = async (leadId: string): Promise<Task[]> => {
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(
+      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre)"
+    )
+    .eq("lead_id", leadId)
+    .order("fecha_programada", { ascending: true });
+
+  if (error || !data) {
+    console.error("[tasks] listTasksByLead error", error);
+    return [];
+  }
+
+  return (data as TaskRow[]).map(mapTaskRow);
+};
+
 export const getTaskById = async (taskId: string): Promise<Task | null> => {
   const supabase = createSupabaseBrowserClient();
   const { data, error } = await supabase

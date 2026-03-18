@@ -2,6 +2,7 @@
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { signInWithPassword, fetchUserProfile } from "../../services/auth/auth.service";
 import { getDefaultRouteForRole } from "../../lib/auth";
@@ -46,18 +47,21 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(74,168,120,0.18),_transparent_45%)]" />
       <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
         <div className="grid w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-card lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="flex flex-col justify-between bg-botanical-700 px-8 py-10 text-white sm:px-12">
+          <div className="flex flex-col justify-between bg-botanical-700 px-8 pt-4 pb-10 text-white sm:px-12">
             <div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-sm font-semibold">
-                  SO
-                </div>
-                <div>
-                  <p className="text-lg font-semibold">SuperOzono CRM</p>
-                  <p className="text-sm text-botanical-100">Ventas inteligentes por WhatsApp</p>
+              <div className="flex justify-center">
+                <div className="relative h-[180px] w-[180px] overflow-hidden sm:h-[230px] sm:w-[230px] lg:h-[300px] lg:w-[300px]">
+                  <Image
+                    src="/SuperOzono.png"
+                    alt="Logo SuperOzono"
+                    fill
+                    sizes="(max-width: 640px) 180px, (max-width: 1024px) 230px, 300px"
+                    className="object-contain"
+                    priority
+                  />
                 </div>
               </div>
-              <h1 className="mt-10 text-3xl font-semibold leading-tight">
+              <h1 className="mt-1 text-3xl font-semibold leading-tight">
                 Gestiona leads, mensajes y tareas en una sola plataforma.
               </h1>
               <p className="mt-4 text-sm text-botanical-100">

@@ -29,8 +29,8 @@ export default function Header({ onToggleSidebar, profile }: HeaderProps) {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-botanical-100 bg-white/90 px-4 backdrop-blur sm:px-6">
-      <div className="flex items-center gap-3">
+    <header className="flex h-16 items-center justify-between border-b border-botanical-100 bg-white/90 px-3 backdrop-blur sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onToggleSidebar}
@@ -38,16 +38,16 @@ export default function Header({ onToggleSidebar, profile }: HeaderProps) {
         >
           Menú
         </button>
-        <div>
-          <p className="text-sm font-semibold text-botanical-900">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-botanical-900">
             SuperOzono CRM
           </p>
-          <p className="text-xs text-botanical-600">
+          <p className="hidden text-xs text-botanical-600 md:block">
             CRM de ventas multi-país
           </p>
         </div>
       </div>
-      <div className="relative flex items-center gap-3">
+      <div className="relative ml-2 flex items-center gap-2 sm:gap-3">
         <div className="hidden text-right text-xs text-botanical-700 sm:block">
           <p className="font-semibold text-botanical-900">{profile?.role ?? "usuario"}</p>
           <p className="text-botanical-600">{userLabel}</p>

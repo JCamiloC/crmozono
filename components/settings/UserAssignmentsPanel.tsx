@@ -158,8 +158,81 @@ export default function UserAssignmentsPanel({
         </select>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-xl border border-botanical-100">
-        <table className="w-full text-left text-sm">
+      <div className="mt-4 space-y-3 md:hidden">
+        {paginatedUsers.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-botanical-200 bg-botanical-50 px-4 py-3 text-sm text-botanical-600">
+            No hay usuarios para los filtros actuales.
+          </div>
+        ) : (
+          paginatedUsers.map((user) => {
+            const draft = drafts[user.id] ?? {
+              role: user.role,
+              countryId: user.countryId,
+            };
+
+            return (
+              <div key={user.id} className="rounded-xl border border-botanical-100 bg-botanical-50 p-4">
+                <p className="truncate text-sm font-semibold text-botanical-900">{user.email ?? user.id}</p>
+                <p className="text-xs text-botanical-600">ID: {user.id.slice(0, 8)}...</p>
+                <div className="mt-3 grid gap-2">
+                  <select
+                    className="w-full rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800"
+                    value={draft.role}
+                    onChange={(event) => {
+                      const role = event.target.value as Role;
+                      setDrafts((currentDrafts) => ({
+                        ...currentDrafts,
+                        [user.id]: {
+                          ...draft,
+                          role,
+                        },
+                      }));
+                    }}
+                  >
+                    {roleOptions.map((roleOption) => (
+                      <option key={roleOption} value={roleOption}>
+                        {roleOption}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="w-full rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800"
+                    value={draft.countryId ?? ""}
+                    onChange={(event) => {
+                      const countryId = event.target.value || null;
+                      setDrafts((currentDrafts) => ({
+                        ...currentDrafts,
+                        [user.id]: {
+                          ...draft,
+                          countryId,
+                        },
+                      }));
+                    }}
+                  >
+                    <option value="">Sin país</option>
+                    {countries.map((country) => (
+                      <option key={country.id} value={country.id}>
+                        {country.name} ({country.code})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveUser(user.id)}
+                    className="rounded-lg bg-botanical-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-botanical-800 disabled:opacity-60"
+                    disabled={savingUserId === user.id}
+                  >
+                    {savingUserId === user.id ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="mt-4 hidden overflow-x-auto rounded-xl border border-botanical-100 md:block">
+        <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-botanical-50 text-xs uppercase tracking-[0.08em] text-botanical-600">
             <tr>
               <th className="px-4 py-3">Usuario</th>

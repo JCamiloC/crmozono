@@ -271,7 +271,7 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-botanical-500">
             Pipeline de leads por estado
           </p>
@@ -295,7 +295,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-botanical-500">
             Salud comercial
           </p>
@@ -329,12 +329,31 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-        <div className="rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-botanical-500">
             Próximas tareas de seguimiento
           </p>
-          <div className="mt-4 overflow-hidden rounded-xl border border-botanical-100">
-            <table className="w-full text-left text-sm">
+          <div className="mt-4 space-y-2 md:hidden">
+            {dashboardData.upcomingTasks.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-botanical-200 bg-botanical-50 px-4 py-3 text-sm text-botanical-600">
+                No hay tareas pendientes registradas.
+              </div>
+            ) : (
+              dashboardData.upcomingTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="rounded-xl border border-botanical-100 bg-botanical-50 px-4 py-3"
+                >
+                  <p className="truncate text-sm font-semibold text-botanical-900">{task.leadNombre}</p>
+                  <p className="mt-1 text-xs text-botanical-700">{task.titulo}</p>
+                  <p className="mt-2 text-xs text-botanical-600">{formatDateTime(task.fechaProgramada)}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase text-botanical-700">{task.estado}</p>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="mt-4 hidden overflow-x-auto rounded-xl border border-botanical-100 md:block">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-botanical-50 text-xs uppercase tracking-[0.08em] text-botanical-600">
                 <tr>
                   <th className="px-4 py-3">Lead</th>
@@ -367,7 +386,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-botanical-500">
             Distribución por país
           </p>
@@ -389,7 +408,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
+      <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.15em] text-botanical-500">
           Actividad reciente (auditoría)
         </p>

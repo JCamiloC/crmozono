@@ -68,10 +68,10 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         onClose={() => setIsSidebarOpen(false)}
         role={profile?.role ?? "agente"}
       />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header onToggleSidebar={() => setIsSidebarOpen((value) => !value)} profile={profile} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="rounded-2xl bg-white p-6 shadow-card">
+        <main className="min-w-0 flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+          <div className="rounded-2xl bg-white p-4 shadow-card sm:p-6">
             {hasAccess ? (
               children
             ) : (

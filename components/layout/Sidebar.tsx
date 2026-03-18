@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Role } from "../../types";
 
 const navigation = [
@@ -29,13 +30,20 @@ export default function Sidebar({ isOpen, onClose, role }: SidebarProps) {
         onClick={onClose}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-botanical-100 bg-white px-6 py-8 shadow-soft transition-transform lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-[86vw] max-w-72 border-r border-botanical-100 bg-white px-4 py-6 shadow-soft transition-transform sm:px-6 sm:py-8 lg:static lg:w-72 lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-botanical-600 text-sm font-semibold text-white">
-            SO
+          <div className="relative h-11 w-11 overflow-hidden rounded-2xl border border-botanical-100 bg-white">
+            <Image
+              src="/SuperOzono.png"
+              alt="Logo SuperOzono"
+              fill
+              sizes="44px"
+              className="object-contain p-1"
+              priority
+            />
           </div>
           <div>
             <p className="text-sm font-semibold text-botanical-900">SuperOzono</p>

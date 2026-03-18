@@ -30,18 +30,18 @@ export default function ConversationList({
               : "border-botanical-100 bg-white hover:bg-botanical-50/70"
           }`}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-botanical-200 text-xs font-semibold text-botanical-800">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-botanical-200 text-xs font-semibold text-botanical-800">
             {conversation.initials}
           </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-botanical-900">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-botanical-900">
               {conversation.leadName}
             </p>
-            <p className="text-xs text-botanical-600">
+            <p className="truncate text-xs text-botanical-600">
               {conversation.lastMessage}
             </p>
           </div>
-          <div className="text-xs text-botanical-500">
+          <div className="shrink-0 text-xs text-botanical-500">
             {formatTime(conversation.updatedAt)}
           </div>
         </button>

@@ -40,7 +40,7 @@ export default function AutomationPanel({
         Crea tarea automática si un lead en contacto/seguimiento no responde en X minutos.
       </p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[auto_160px_auto_auto] sm:items-center">
+      <div className="mt-4 grid gap-3 md:grid-cols-[auto_160px_auto_auto] md:items-center">
         <label className="inline-flex items-center gap-2 text-sm text-botanical-800">
           <input
             type="checkbox"

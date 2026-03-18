@@ -79,9 +79,9 @@ export default function CampaignDetailPanel({
         </p>
         <div className="mt-3 space-y-2 text-xs text-botanical-700">
           {logs.map((log) => (
-            <div key={log.id} className="flex items-center justify-between">
-              <span>{log.phone}</span>
-              <span className="text-botanical-600">{log.status}</span>
+            <div key={log.id} className="flex items-center justify-between gap-3">
+              <span className="break-all">{log.phone}</span>
+              <span className="shrink-0 text-botanical-600">{log.status}</span>
             </div>
           ))}
         </div>
