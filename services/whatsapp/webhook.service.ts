@@ -16,6 +16,14 @@ type IncomingMessage = {
   contactName: string | null;
 };
 
+type MessageStatusUpdate = {
+  messageId: string;
+  recipientId: string;
+  status: string;
+  timestamp: string;
+  rawStatus: Record<string, unknown>;
+};
+
 type LeadLookupRow = {
   id: string;
   telefono: string;
@@ -288,6 +296,61 @@ const extractIncomingMessages = (payload: unknown): IncomingMessage[] => {
   return messages;
 };
 
+const extractMessageStatuses = (payload: unknown): MessageStatusUpdate[] => {
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const entries = Array.isArray((payload as { entry?: unknown[] }).entry)
+    ? ((payload as { entry: unknown[] }).entry ?? [])
+    : [];
+
+  const statuses: MessageStatusUpdate[] = [];
+
+  for (const entry of entries) {
+    const changes =
+      entry && typeof entry === "object" && Array.isArray((entry as { changes?: unknown[] }).changes)
+        ? ((entry as { changes: unknown[] }).changes ?? [])
+        : [];
+
+    for (const change of changes) {
+      const value =
+        change && typeof change === "object"
+          ? ((change as { value?: unknown }).value as Record<string, unknown> | undefined)
+          : undefined;
+
+      const statusList = Array.isArray(value?.statuses)
+        ? (value?.statuses as Record<string, unknown>[])
+        : [];
+
+      for (const statusItem of statusList) {
+        const messageId = typeof statusItem.id === "string" ? statusItem.id : "";
+        const recipientId =
+          typeof statusItem.recipient_id === "string" ? statusItem.recipient_id : "";
+        const status = typeof statusItem.status === "string" ? statusItem.status : "unknown";
+        const timestampRaw = typeof statusItem.timestamp === "string" ? statusItem.timestamp : "";
+        const timestamp = timestampRaw
+          ? new Date(Number(timestampRaw) * 1000).toISOString()
+          : new Date().toISOString();
+
+        if (!messageId) {
+          continue;
+        }
+
+        statuses.push({
+          messageId,
+          recipientId,
+          status,
+          timestamp,
+          rawStatus: statusItem,
+        });
+      }
+    }
+  }
+
+  return statuses;
+};
+
 export const parseWhatsAppWebhookPayload = (payload: unknown): ParsedWebhookEvent => {
   const object =
     typeof payload === "object" && payload !== null && "object" in payload
@@ -480,10 +543,28 @@ const markWebhookEvent = async (eventId: string, processed: boolean, errorMessag
 
 export const processWhatsAppWebhook = async (payload: unknown) => {
   const incomingMessages = extractIncomingMessages(payload);
+  const messageStatuses = extractMessageStatuses(payload);
 
   let processedCount = 0;
   let ignoredCount = 0;
   let duplicateCount = 0;
+
+  for (const messageStatus of messageStatuses) {
+    const eventId = await saveWebhookEvent(
+      "message_status",
+      {
+        ...messageStatus.rawStatus,
+        normalized_status: messageStatus.status,
+        normalized_timestamp: messageStatus.timestamp,
+      },
+      messageStatus.messageId,
+      messageStatus.recipientId || undefined
+    );
+
+    if (eventId) {
+      await markWebhookEvent(eventId, true);
+    }
+  }
 
   for (const incomingMessage of incomingMessages) {
     const supabase = createSupabaseAdminClient();
@@ -552,6 +633,7 @@ export const processWhatsAppWebhook = async (payload: unknown) => {
 
   return {
     incomingCount: incomingMessages.length,
+    statusCount: messageStatuses.length,
     processedCount,
     ignoredCount,
     duplicateCount,
