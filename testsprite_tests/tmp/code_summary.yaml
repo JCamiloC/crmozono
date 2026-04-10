@@ -1,0 +1,188 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js App Router
+  - React 19
+  - Tailwind CSS
+  - Supabase
+routes:
+  - path: /
+    file: app/page.tsx
+    auth_required: false
+    description: Landing and public entry page.
+  - path: /login
+    file: app/login/page.tsx
+    auth_required: false
+    description: User authentication page.
+  - path: /dashboard
+    file: app/dashboard/page.tsx
+    auth_required: true
+    description: Executive dashboard with KPI cards, filters, and operational alerts.
+  - path: /dashboard/leads
+    file: app/dashboard/leads/page.tsx
+    auth_required: true
+    description: Lead lifecycle management with integrated workspace (messages/tasks/calls).
+  - path: /dashboard/mensajes
+    file: app/dashboard/mensajes/page.tsx
+    auth_required: true
+    description: Conversation inbox, message thread, templates, and send actions.
+  - path: /dashboard/tareas
+    file: app/dashboard/tareas/page.tsx
+    auth_required: true
+    description: Task management and status tracking by lead.
+  - path: /dashboard/llamadas
+    file: app/dashboard/llamadas/page.tsx
+    auth_required: true
+    description: Calls history and post-call result workflow.
+  - path: /dashboard/campanas
+    file: app/dashboard/campanas/page.tsx
+    auth_required: true
+    description: Campaign list, campaign detail, and campaign creation flow.
+  - path: /dashboard/configuracion
+    file: app/dashboard/configuracion/page.tsx
+    auth_required: true
+    description: Roles, countries, user assignments, templates, automation config, and audit.
+  - path: /politica-privacidad
+    file: app/politica-privacidad/page.tsx
+    auth_required: false
+    description: Privacy policy page.
+features:
+  - name: Authentication and role-aware session
+    description: Users authenticate and then navigate protected dashboard routes with role-based visibility.
+    files:
+      - app/login/page.tsx
+      - lib/auth.ts
+      - services/auth/auth.service.ts
+    entry_route: /login
+    user_interactions:
+      - Enter email and password
+      - Submit login form
+      - Redirect to dashboard after successful authentication
+      - Receive feedback on invalid credentials
+    api_calls:
+      - method: Supabase Auth
+        endpoint: supabase.auth.signInWithPassword
+    auth_required: false
+  - name: Lead lifecycle workflow
+    description: Full lead management including manual creation, state transitions, and closure rules.
+    files:
+      - app/dashboard/leads/page.tsx
+      - components/leads/LeadDetailPanel.tsx
+      - components/leads/LeadTable.tsx
+      - services/leads/leads.service.ts
+    entry_route: /dashboard/leads
+    user_interactions:
+      - Create manual lead with country and phone
+      - Filter, sort, and select leads
+      - Change lead status and register business actions
+      - Close lead when rules are satisfied
+    api_calls:
+      - method: Supabase Client
+        endpoint: public.leads
+      - method: Supabase Client
+        endpoint: public.lead_status_history
+    auth_required: true
+  - name: Messaging and conversation management
+    description: Manage WhatsApp-linked conversations, send messages, and use templates.
+    files:
+      - app/dashboard/mensajes/page.tsx
+      - components/messages/MessageThread.tsx
+      - components/messages/MessageComposer.tsx
+      - services/mensajes.service.ts
+      - app/api/whatsapp/messages/route.ts
+    entry_route: /dashboard/mensajes
+    user_interactions:
+      - Select a conversation from list
+      - Write and send message with Enter or button
+      - Apply approved template to message composer
+      - Navigate from conversation to linked lead
+    api_calls:
+      - method: POST
+        endpoint: /api/whatsapp/messages
+      - method: Supabase Client
+        endpoint: public.conversations
+      - method: Supabase Client
+        endpoint: public.messages
+    auth_required: true
+  - name: Task operations and follow-up control
+    description: Track pending tasks, update statuses, and review task history.
+    files:
+      - app/dashboard/tareas/page.tsx
+      - components/tasks/TaskTable.tsx
+      - services/tasks/tasks.service.ts
+    entry_route: /dashboard/tareas
+    user_interactions:
+      - Filter tasks by status and schedule window
+      - Select task and update status
+      - Review task detail and status history
+    api_calls:
+      - method: Supabase Client
+        endpoint: public.tasks
+      - method: Supabase Client
+        endpoint: public.task_history
+    auth_required: true
+  - name: Calls registration and outcomes
+    description: Register call outcomes and update call records linked to leads.
+    files:
+      - app/dashboard/llamadas/page.tsx
+      - components/calls/CallDetailPanel.tsx
+      - services/llamadas.service.ts
+    entry_route: /dashboard/llamadas
+    user_interactions:
+      - Browse call list and select a call
+      - Submit post-call result and notes
+      - View updated result badges and details
+    api_calls:
+      - method: Supabase Client
+        endpoint: public.calls
+    auth_required: true
+  - name: Campaign management overview
+    description: Campaign listing, details, and creation flow with logs.
+    files:
+      - app/dashboard/campanas/page.tsx
+      - components/campaigns/CampaignForm.tsx
+      - services/campañas.service.ts
+    entry_route: /dashboard/campanas
+    user_interactions:
+      - Search and filter campaigns
+      - Select campaign to inspect details and logs
+      - Create a new campaign draft
+    api_calls:
+      - method: Supabase Client
+        endpoint: public.campaigns
+      - method: Supabase Client
+        endpoint: public.campaign_logs
+    auth_required: true
+  - name: Configuration and governance
+    description: Configure countries, assignments, templates, automations, and audit visibility.
+    files:
+      - app/dashboard/configuracion/page.tsx
+      - components/settings/UserAssignmentsPanel.tsx
+      - components/settings/TemplateSettingsPanel.tsx
+      - services/configuracion.service.ts
+    entry_route: /dashboard/configuracion
+    user_interactions:
+      - Create or edit countries
+      - Update user role/country assignments
+      - Edit template settings and automation parameters
+      - Trigger automation runs and review summaries
+    api_calls:
+      - method: Supabase Client
+        endpoint: public.countries
+      - method: Supabase Client
+        endpoint: public.profiles
+      - method: Supabase Client
+        endpoint: public.message_templates
+      - method: Supabase Client
+        endpoint: public.whatsapp_runtime_config
+      - method: Supabase Client
+        endpoint: public.audit_logs
+    auth_required: true
+known_limitations:
+  - issue: Database row-level security is intentionally deferred; visibility is enforced mainly at service layer.
+    location: services/* and sql/09_permissions_no_rls.sql
+    impact: Requires careful regression checks for scope filtering and role isolation.
+  - issue: WhatsApp calling is not supported in this Cloud API setup.
+    location: docs and messaging/calls integration scope
+    impact: Voice call flows remain manual/simulated in CRM context.

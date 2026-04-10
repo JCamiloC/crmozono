@@ -1,4 +1,5 @@
 import type { RoleSummary } from "../../types";
+import EmptyState from "../ui/EmptyState";
 
 type RolesPanelProps = {
   roles: RoleSummary[];
@@ -12,6 +13,9 @@ export default function RolesPanel({ roles }: RolesPanelProps) {
         Vista general de permisos por rol.
       </p>
       <div className="mt-4 space-y-4">
+        {roles.length === 0 ? (
+          <EmptyState title="Sin roles configurados" compact className="bg-white" />
+        ) : null}
         {roles.map((role) => (
           <div key={role.id} className="rounded-2xl border border-botanical-100 bg-botanical-50 p-4">
             <p className="text-sm font-semibold text-botanical-900">{role.name}</p>

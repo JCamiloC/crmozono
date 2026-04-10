@@ -1,5 +1,6 @@
 import { createSupabaseBrowserClient } from "../../lib/supabase/client";
 import type { Task, TaskHistory, TaskStatus } from "../../types";
+import { getCurrentAccessScope } from "../auth/access-scope.service";
 
 type TaskRow = {
   id: string;
@@ -12,7 +13,20 @@ type TaskRow = {
   estado: string;
   fecha_creacion: string;
   fecha_completada: string | null;
-  leads?: { nombre: string | null } | { nombre: string | null }[] | null;
+  leads?:
+    | {
+        nombre: string | null;
+        pais: string;
+        administrador_id: string;
+        agente_id: string;
+      }
+    | {
+        nombre: string | null;
+        pais: string;
+        administrador_id: string;
+        agente_id: string;
+      }[]
+    | null;
 };
 
 type TaskHistoryRow = {
@@ -85,12 +99,27 @@ const getCurrentActorId = async (fallbackUserId: string): Promise<string> => {
 
 export const listTasks = async (): Promise<Task[]> => {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
+  const scope = await getCurrentAccessScope();
+
+  if (!scope) {
+    return [];
+  }
+
+  let query = supabase
     .from("tasks")
     .select(
-      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre)"
-    )
-    .order("fecha_programada", { ascending: true });
+      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre, pais, administrador_id, agente_id)"
+    );
+
+  if (scope.role === "agente") {
+    query = query.eq("leads.agente_id", scope.userId);
+  } else if (scope.role === "admin") {
+    query = scope.countryName
+      ? query.eq("leads.pais", scope.countryName)
+      : query.eq("leads.administrador_id", scope.userId);
+  }
+
+  const { data, error } = await query.order("fecha_programada", { ascending: true });
 
   if (error || !data) {
     console.error("[tasks] listTasks error", error);
@@ -102,13 +131,28 @@ export const listTasks = async (): Promise<Task[]> => {
 
 export const listTasksByLead = async (leadId: string): Promise<Task[]> => {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
+  const scope = await getCurrentAccessScope();
+
+  if (!scope) {
+    return [];
+  }
+
+  let query = supabase
     .from("tasks")
     .select(
-      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre)"
+      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre, pais, administrador_id, agente_id)"
     )
-    .eq("lead_id", leadId)
-    .order("fecha_programada", { ascending: true });
+    .eq("lead_id", leadId);
+
+  if (scope.role === "agente") {
+    query = query.eq("leads.agente_id", scope.userId);
+  } else if (scope.role === "admin") {
+    query = scope.countryName
+      ? query.eq("leads.pais", scope.countryName)
+      : query.eq("leads.administrador_id", scope.userId);
+  }
+
+  const { data, error } = await query.order("fecha_programada", { ascending: true });
 
   if (error || !data) {
     console.error("[tasks] listTasksByLead error", error);
@@ -120,13 +164,28 @@ export const listTasksByLead = async (leadId: string): Promise<Task[]> => {
 
 export const getTaskById = async (taskId: string): Promise<Task | null> => {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
+  const scope = await getCurrentAccessScope();
+
+  if (!scope) {
+    return null;
+  }
+
+  let query = supabase
     .from("tasks")
     .select(
-      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre)"
+      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre, pais, administrador_id, agente_id)"
     )
-    .eq("id", taskId)
-    .maybeSingle();
+    .eq("id", taskId);
+
+  if (scope.role === "agente") {
+    query = query.eq("leads.agente_id", scope.userId);
+  } else if (scope.role === "admin") {
+    query = scope.countryName
+      ? query.eq("leads.pais", scope.countryName)
+      : query.eq("leads.administrador_id", scope.userId);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error || !data) {
     return null;
@@ -139,6 +198,30 @@ export const createTask = async (
   payload: Omit<Task, "id" | "fechaCreacion" | "fechaCompletada">
 ): Promise<Task> => {
   const supabase = createSupabaseBrowserClient();
+  const scope = await getCurrentAccessScope();
+
+  if (!scope) {
+    throw new Error("No se pudo resolver el alcance del usuario.");
+  }
+
+  let leadAccessQuery = supabase
+    .from("leads")
+    .select("id, pais, administrador_id, agente_id")
+    .eq("id", payload.leadId);
+
+  if (scope.role === "agente") {
+    leadAccessQuery = leadAccessQuery.eq("agente_id", scope.userId);
+  } else if (scope.role === "admin") {
+    leadAccessQuery = scope.countryName
+      ? leadAccessQuery.eq("pais", scope.countryName)
+      : leadAccessQuery.eq("administrador_id", scope.userId);
+  }
+
+  const { data: visibleLead, error: visibleLeadError } = await leadAccessQuery.maybeSingle();
+
+  if (visibleLeadError || !visibleLead) {
+    throw new Error("No tienes acceso a este lead.");
+  }
 
   const { data: existingPendingTask } = await supabase
     .from("tasks")
@@ -165,7 +248,7 @@ export const createTask = async (
       estado: payload.estado,
     })
     .select(
-      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre)"
+      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre, pais, administrador_id, agente_id)"
     )
     .single();
 
@@ -219,7 +302,7 @@ export const updateTaskStatus = async (
     })
     .eq("id", taskId)
     .select(
-      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre)"
+      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre, pais, administrador_id, agente_id)"
     )
     .single();
 
@@ -247,6 +330,31 @@ export const updateTaskStatus = async (
 
 export const cancelTasksByLead = async (leadId: string): Promise<Task[]> => {
   const supabase = createSupabaseBrowserClient();
+  const scope = await getCurrentAccessScope();
+
+  if (!scope) {
+    return [];
+  }
+
+  let leadAccessQuery = supabase
+    .from("leads")
+    .select("id, pais, administrador_id, agente_id")
+    .eq("id", leadId);
+
+  if (scope.role === "agente") {
+    leadAccessQuery = leadAccessQuery.eq("agente_id", scope.userId);
+  } else if (scope.role === "admin") {
+    leadAccessQuery = scope.countryName
+      ? leadAccessQuery.eq("pais", scope.countryName)
+      : leadAccessQuery.eq("administrador_id", scope.userId);
+  }
+
+  const { data: visibleLead, error: visibleLeadError } = await leadAccessQuery.maybeSingle();
+
+  if (visibleLeadError || !visibleLead) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("tasks")
     .update({
@@ -256,7 +364,7 @@ export const cancelTasksByLead = async (leadId: string): Promise<Task[]> => {
     .eq("lead_id", leadId)
     .eq("estado", "pendiente")
     .select(
-      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre)"
+      "id, lead_id, agente_id, titulo, tipo_tarea, descripcion, fecha_programada, estado, fecha_creacion, fecha_completada, leads(nombre, pais, administrador_id, agente_id)"
     );
 
   if (error || !data) {

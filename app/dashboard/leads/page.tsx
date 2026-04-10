@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import LeadDetailPanel from "../../../components/leads/LeadDetailPanel";
 import LeadFilters from "../../../components/leads/LeadFilters";
 import ManualLeadForm from "../../../components/leads/ManualLeadForm";
 import LeadTable from "../../../components/leads/LeadTable";
+import AlertBanner from "../../../components/ui/AlertBanner";
+import EmptyState from "../../../components/ui/EmptyState";
+import SectionSkeleton from "../../../components/ui/SectionSkeleton";
 import type { CallResult, Lead, LeadStatus, LeadStatusHistory } from "../../../types";
 import {
   closeLead,
@@ -50,7 +54,12 @@ const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
 
 const isFinalLeadStatus = (status: LeadStatus): boolean => FINAL_LEAD_STATUS.includes(status);
 
+const normalizePhoneSearch = (value: string): string => value.replace(/[^\d]/g, "");
+
 export default function LeadsPage() {
+  const searchParams = useSearchParams();
+  const initialLeadId = searchParams.get("leadId");
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [referenceNowMs, setReferenceNowMs] = useState(0);
@@ -135,11 +144,14 @@ export default function LeadsPage() {
       const userEmail = profile?.email?.trim() ?? "";
       setCurrentAgentName(userEmail || "Agente");
       if (data.length > 0) {
-        setSelectedLeadId(data[0].id);
+        const targetLead = initialLeadId
+          ? data.find((lead) => lead.id === initialLeadId)
+          : null;
+        setSelectedLeadId(targetLead?.id ?? data[0].id);
       }
     };
     load();
-  }, []);
+  }, [initialLeadId]);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -202,10 +214,18 @@ export default function LeadsPage() {
   );
 
   const filteredLeads = useMemo(() => {
+    const normalizedSearch = searchValue.trim().toLowerCase();
+    const normalizedSearchPhone = normalizePhoneSearch(searchValue);
+
     return leads.filter((lead) => {
-      const searchMatch =
-        lead.nombre?.toLowerCase().includes(searchValue.toLowerCase()) ||
-        lead.telefono.toLowerCase().includes(searchValue.toLowerCase());
+      const byName = lead.nombre?.toLowerCase().includes(normalizedSearch) ?? false;
+      const byRawPhone = lead.telefono.toLowerCase().includes(normalizedSearch);
+      const byNormalizedPhone =
+        normalizedSearchPhone.length > 0 &&
+        normalizePhoneSearch(lead.telefono).includes(normalizedSearchPhone);
+      const searchMatch = !normalizedSearch
+        ? true
+        : byName || byRawPhone || byNormalizedPhone;
       const statusMatch = statusValue === "all" || lead.estadoActual === statusValue;
       const countryMatch = countryValue === "all" || lead.pais === countryValue;
       return searchMatch && statusMatch && countryMatch;
@@ -236,6 +256,23 @@ export default function LeadsPage() {
 
     return sorted;
   }, [filteredLeads, orderValue]);
+
+  useEffect(() => {
+    if (sortedLeads.length === 0) {
+      if (selectedLeadId) {
+        setSelectedLeadId(null);
+      }
+      return;
+    }
+
+    const selectedStillVisible = selectedLeadId
+      ? sortedLeads.some((lead) => lead.id === selectedLeadId)
+      : false;
+
+    if (!selectedStillVisible) {
+      setSelectedLeadId(sortedLeads[0].id);
+    }
+  }, [selectedLeadId, sortedLeads]);
 
   const totalPages = Math.max(1, Math.ceil(sortedLeads.length / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -788,9 +825,11 @@ export default function LeadsPage() {
           </div>
 
           {sortedLeads.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-botanical-200 bg-white p-6 text-sm text-botanical-600">
-              No hay leads para los filtros actuales.
-            </div>
+            <EmptyState
+              title="No hay leads para los filtros actuales"
+              description="Prueba con otro estado, país o término de búsqueda."
+              className="bg-white"
+            />
           ) : (
             <>
               <LeadTable
@@ -890,26 +929,27 @@ export default function LeadsPage() {
         </div>
 
         {workspaceError ? (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-            {workspaceError}
-          </p>
+          <AlertBanner message={workspaceError} tone="danger" className="mt-3 text-xs" />
         ) : null}
 
         {isSelectedLeadFinalized ? (
-          <p className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-            Lead en estado final. Las acciones comerciales quedan bloqueadas para preservar trazabilidad.
-          </p>
+          <AlertBanner
+            message="Lead en estado final. Las acciones comerciales quedan bloqueadas para preservar trazabilidad."
+            className="mt-3 border-slate-300 bg-slate-50 text-xs text-slate-700"
+          />
         ) : null}
 
         {workspaceLoading ? (
-          <p className="mt-4 text-sm text-botanical-600">Cargando gestión del lead...</p>
+          <div className="mt-4 rounded-xl border border-botanical-100 bg-white p-3">
+            <SectionSkeleton lines={4} />
+          </div>
         ) : null}
 
         {!workspaceLoading && workspaceTab === "mensajes" ? (
           <div className="mt-4 space-y-3">
             <div className="max-h-64 overflow-y-auto rounded-2xl border border-botanical-100 bg-botanical-50 p-3">
               {workspaceMessages.length === 0 ? (
-                <p className="text-sm text-botanical-600">Sin mensajes registrados.</p>
+                <EmptyState title="Sin mensajes registrados" compact />
               ) : (
                 <div className="space-y-2">
                   {workspaceMessages.map((message) => (
@@ -960,7 +1000,7 @@ export default function LeadsPage() {
         {!workspaceLoading && workspaceTab === "tareas" ? (
           <div className="mt-4">
             {workspaceTasks.length === 0 ? (
-              <p className="text-sm text-botanical-600">Sin tareas registradas para este lead.</p>
+              <EmptyState title="Sin tareas registradas para este lead" compact />
             ) : (
               <>
                 <div className="space-y-2 md:hidden">
@@ -1053,9 +1093,11 @@ export default function LeadsPage() {
         {!workspaceLoading && workspaceTab === "llamadas" ? (
           <div className="mt-4 space-y-2">
             {workspaceCalls.length === 0 ? (
-              <p className="text-sm text-botanical-600">
-                Sin llamadas aún. Usa "Llamada realizada" en el detalle del lead para registrar la primera.
-              </p>
+              <EmptyState
+                title="Sin llamadas registradas"
+                description="Usa la acción de llamada realizada para crear la primera gestión."
+                compact
+              />
             ) : (
               workspaceCalls.map((call) => (
                 <div

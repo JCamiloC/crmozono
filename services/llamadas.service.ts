@@ -1,5 +1,6 @@
 import { createSupabaseBrowserClient } from "../lib/supabase/client";
 import type { Call, CallResult } from "../types";
+import { getCurrentAccessScope } from "./auth/access-scope.service";
 
 type CallRow = {
 	id: string;
@@ -10,7 +11,22 @@ type CallRow = {
 	duration_minutes: number;
 	result: string;
 	notes: string | null;
-	leads?: { nombre: string | null; telefono: string } | { nombre: string | null; telefono: string }[] | null;
+	leads?:
+		| {
+				nombre: string | null;
+				telefono: string;
+				pais: string;
+				administrador_id: string;
+				agente_id: string;
+		  }
+		| {
+				nombre: string | null;
+				telefono: string;
+				pais: string;
+				administrador_id: string;
+				agente_id: string;
+		  }[]
+		| null;
 };
 
 const VALID_CALL_RESULT: CallResult[] = [
@@ -63,10 +79,27 @@ const mapCallRow = (row: CallRow): Call => {
 
 export const listCalls = async (): Promise<Call[]> => {
 	const supabase = createSupabaseBrowserClient();
-	const { data, error } = await supabase
+	const scope = await getCurrentAccessScope();
+
+	if (!scope) {
+		return [];
+	}
+
+	let query = supabase
 		.from("calls")
-		.select("id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono)")
-		.order("started_at", { ascending: false });
+		.select(
+			"id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono, pais, administrador_id, agente_id)"
+		);
+
+	if (scope.role === "agente") {
+		query = query.eq("leads.agente_id", scope.userId);
+	} else if (scope.role === "admin") {
+		query = scope.countryName
+			? query.eq("leads.pais", scope.countryName)
+			: query.eq("leads.administrador_id", scope.userId);
+	}
+
+	const { data, error } = await query.order("started_at", { ascending: false });
 
 	if (error || !data) {
 		console.error("[calls] listCalls error", error);
@@ -78,11 +111,28 @@ export const listCalls = async (): Promise<Call[]> => {
 
 export const listCallsByLead = async (leadId: string): Promise<Call[]> => {
 	const supabase = createSupabaseBrowserClient();
-	const { data, error } = await supabase
+	const scope = await getCurrentAccessScope();
+
+	if (!scope) {
+		return [];
+	}
+
+	let query = supabase
 		.from("calls")
-		.select("id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono)")
-		.eq("lead_id", leadId)
-		.order("started_at", { ascending: false });
+		.select(
+			"id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono, pais, administrador_id, agente_id)"
+		)
+		.eq("lead_id", leadId);
+
+	if (scope.role === "agente") {
+		query = query.eq("leads.agente_id", scope.userId);
+	} else if (scope.role === "admin") {
+		query = scope.countryName
+			? query.eq("leads.pais", scope.countryName)
+			: query.eq("leads.administrador_id", scope.userId);
+	}
+
+	const { data, error } = await query.order("started_at", { ascending: false });
 
 	if (error || !data) {
 		console.error("[calls] listCallsByLead error", error);
@@ -94,11 +144,28 @@ export const listCallsByLead = async (leadId: string): Promise<Call[]> => {
 
 export const getCallById = async (callId: string): Promise<Call | null> => {
 	const supabase = createSupabaseBrowserClient();
-	const { data, error } = await supabase
+	const scope = await getCurrentAccessScope();
+
+	if (!scope) {
+		return null;
+	}
+
+	let query = supabase
 		.from("calls")
-		.select("id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono)")
-		.eq("id", callId)
-		.maybeSingle();
+		.select(
+			"id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono, pais, administrador_id, agente_id)"
+		)
+		.eq("id", callId);
+
+	if (scope.role === "agente") {
+		query = query.eq("leads.agente_id", scope.userId);
+	} else if (scope.role === "admin") {
+		query = scope.countryName
+			? query.eq("leads.pais", scope.countryName)
+			: query.eq("leads.administrador_id", scope.userId);
+	}
+
+	const { data, error } = await query.maybeSingle();
 
 	if (error || !data) {
 		return null;
@@ -109,6 +176,31 @@ export const getCallById = async (callId: string): Promise<Call | null> => {
 
 export const createCall = async (payload: Omit<Call, "id">): Promise<Call> => {
 	const supabase = createSupabaseBrowserClient();
+	const scope = await getCurrentAccessScope();
+
+	if (!scope) {
+		throw new Error("No se pudo resolver el alcance del usuario.");
+	}
+
+	let leadAccessQuery = supabase
+		.from("leads")
+		.select("id, pais, administrador_id, agente_id")
+		.eq("id", payload.leadId);
+
+	if (scope.role === "agente") {
+		leadAccessQuery = leadAccessQuery.eq("agente_id", scope.userId);
+	} else if (scope.role === "admin") {
+		leadAccessQuery = scope.countryName
+			? leadAccessQuery.eq("pais", scope.countryName)
+			: leadAccessQuery.eq("administrador_id", scope.userId);
+	}
+
+	const { data: visibleLead, error: visibleLeadError } = await leadAccessQuery.maybeSingle();
+
+	if (visibleLeadError || !visibleLead) {
+		throw new Error("No tienes acceso a este lead.");
+	}
+
 	const { data, error } = await supabase
 		.from("calls")
 		.insert({
@@ -120,7 +212,9 @@ export const createCall = async (payload: Omit<Call, "id">): Promise<Call> => {
 			result: payload.result,
 			notes: payload.notes,
 		})
-		.select("id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono)")
+		.select(
+			"id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono, pais, administrador_id, agente_id)"
+		)
 		.single();
 
 	if (error || !data) {
@@ -155,7 +249,9 @@ export const registerCallResult = async (
 			duration_minutes: durationMinutes,
 		})
 		.eq("id", callId)
-		.select("id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono)")
+		.select(
+			"id, lead_id, agent_name, started_at, ended_at, duration_minutes, result, notes, leads(nombre, telefono, pais, administrador_id, agente_id)"
+		)
 		.single();
 
 	if (error || !data) {

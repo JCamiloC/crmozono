@@ -1,5 +1,6 @@
 import type { Call } from "../../types";
 import CallStatusBadge from "./CallStatusBadge";
+import EmptyState from "../ui/EmptyState";
 
 type CallListProps = {
   calls: Call[];
@@ -10,6 +11,9 @@ type CallListProps = {
 export default function CallList({ calls, selectedId, onSelect }: CallListProps) {
   return (
     <div className="space-y-3">
+      {calls.length === 0 ? (
+        <EmptyState title="Sin llamadas para mostrar" compact className="bg-white" />
+      ) : null}
       {calls.map((call) => (
         <button
           key={call.id}

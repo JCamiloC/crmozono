@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type ManualLeadFormProps = {
   countries: string[];
@@ -20,6 +20,12 @@ export default function ManualLeadForm({ countries, onCreateLead }: ManualLeadFo
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const sortedCountries = useMemo(() => [...countries].sort((a, b) => a.localeCompare(b, "es")), [countries]);
+
+  useEffect(() => {
+    if (!pais && sortedCountries.length > 0) {
+      setPais(sortedCountries[0]);
+    }
+  }, [pais, sortedCountries]);
 
   const handleSubmit = async () => {
     setErrorMessage(null);

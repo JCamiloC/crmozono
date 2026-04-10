@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import TaskDetailPanel from "../../../components/tasks/TaskDetailPanel";
 import TaskFilters from "../../../components/tasks/TaskFilters";
 import TaskTable from "../../../components/tasks/TaskTable";
+import AlertBanner from "../../../components/ui/AlertBanner";
+import EmptyState from "../../../components/ui/EmptyState";
 import type { Task, TaskHistory, TaskStatus } from "../../../types";
 import {
   getTaskHistory,
@@ -179,14 +181,14 @@ export default function TareasPage() {
 
       {(overdueCount > 0 || dueSoonCount > 0) && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            <p className="font-semibold">Tareas por vencer</p>
-            <p>{dueSoonCount} tarea(s) vencen en las próximas 24 horas.</p>
-          </div>
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            <p className="font-semibold">Tareas vencidas</p>
-            <p>{overdueCount} tarea(s) requieren gestión inmediata.</p>
-          </div>
+          <AlertBanner
+            message={`${dueSoonCount} tarea(s) vencen en las proximas 24 horas.`}
+            tone="warning"
+          />
+          <AlertBanner
+            message={`${overdueCount} tarea(s) requieren gestion inmediata.`}
+            tone="danger"
+          />
         </div>
       )}
 
@@ -216,9 +218,11 @@ export default function TareasPage() {
           </div>
 
           {sortedTasks.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-botanical-200 bg-white p-6 text-sm text-botanical-600">
-              No hay tareas para los filtros actuales.
-            </div>
+            <EmptyState
+              title="No hay tareas para los filtros actuales"
+              description="Ajusta el estado o la fecha para encontrar actividades."
+              className="bg-white"
+            />
           ) : (
             <>
               <TaskTable

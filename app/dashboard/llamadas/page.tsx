@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import CallDetailPanel from "../../../components/calls/CallDetailPanel";
 import CallList from "../../../components/calls/CallList";
+import EmptyState from "../../../components/ui/EmptyState";
+import SectionSkeleton from "../../../components/ui/SectionSkeleton";
 import type { Call, CallResult } from "../../../types";
 import { listCalls, registerCallResult } from "../../../services/llamadas.service";
 import { addAuditLog } from "../../../services/auditoria.service";
@@ -16,16 +18,19 @@ export default function LlamadasPage() {
     "started_desc" | "started_asc" | "lead_asc" | "lead_desc" | "duration_desc"
   >("started_desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   const PAGE_SIZE = 10;
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       const data = await listCalls();
       setCalls(data);
       if (data.length > 0) {
         setSelectedCallId(data[0].id);
       }
+      setLoading(false);
     };
     load();
   }, []);
@@ -152,6 +157,13 @@ export default function LlamadasPage() {
             selectedId={selectedCallId}
             onSelect={setSelectedCallId}
           />
+          {!loading && processedCalls.length === 0 ? (
+            <EmptyState
+              title="No hay llamadas para los filtros actuales"
+              description="Intenta otro resultado o termino de busqueda."
+              className="bg-white"
+            />
+          ) : null}
           {totalPages > 1 ? (
             <div className="mt-1 flex items-center justify-between text-xs text-botanical-700">
               <span>
@@ -179,7 +191,13 @@ export default function LlamadasPage() {
           ) : null}
         </div>
         <div className="min-w-0">
-          <CallDetailPanel call={selectedCall} onRegisterResult={handleRegisterResult} />
+          {loading ? (
+            <div className="rounded-2xl border border-botanical-100 bg-white p-4 shadow-sm">
+              <SectionSkeleton lines={4} />
+            </div>
+          ) : (
+            <CallDetailPanel call={selectedCall} onRegisterResult={handleRegisterResult} />
+          )}
         </div>
       </div>
     </div>

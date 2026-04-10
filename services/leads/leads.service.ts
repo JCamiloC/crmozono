@@ -1,5 +1,6 @@
 import { createSupabaseBrowserClient } from "../../lib/supabase/client";
 import type { Lead, LeadOrigin, LeadStatus, LeadStatusHistory } from "../../types";
+import { getCurrentAccessScope } from "../auth/access-scope.service";
 
 type LeadRow = {
   id: string;
@@ -100,6 +101,9 @@ const resolveAssignmentsByCountry = async (
   countryName: string
 ): Promise<{ adminId: string; agentId: string }> => {
   const supabase = createSupabaseBrowserClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: countryData, error: countryError } = await supabase
     .from("countries")
@@ -116,7 +120,7 @@ const resolveAssignmentsByCountry = async (
   let profileQuery = supabase
     .from("profiles")
     .select("id, role, country_id, created_at")
-    .in("role", ["admin", "agente"])
+    .in("role", ["superadmin", "admin", "agente"])
     .order("created_at", { ascending: true });
 
   if (countryId) {
@@ -130,17 +134,22 @@ const resolveAssignmentsByCountry = async (
   }
 
   const profiles = (profileData as ProfileAssignmentRow[] | null) ?? [];
-  const admin = profiles.find((item) => item.role === "admin");
+  const admin = profiles.find((item) => item.role === "admin") ??
+    profiles.find((item) => item.role === "superadmin");
   const agent = profiles.find((item) => item.role === "agente");
 
   if (admin && agent) {
     return { adminId: admin.id, agentId: agent.id };
   }
 
+  if (admin) {
+    return { adminId: admin.id, agentId: admin.id };
+  }
+
   const { data: fallbackProfiles, error: fallbackError } = await supabase
     .from("profiles")
     .select("id, role, country_id, created_at")
-    .in("role", ["admin", "agente"])
+    .in("role", ["superadmin", "admin", "agente"])
     .order("created_at", { ascending: true });
 
   if (fallbackError) {
@@ -148,17 +157,32 @@ const resolveAssignmentsByCountry = async (
   }
 
   const fallback = (fallbackProfiles as ProfileAssignmentRow[] | null) ?? [];
-  const fallbackAdmin = fallback.find((item) => item.role === "admin");
+  const fallbackAdmin = fallback.find((item) => item.role === "admin") ??
+    fallback.find((item) => item.role === "superadmin");
   const fallbackAgent = fallback.find((item) => item.role === "agente");
 
-  if (!fallbackAdmin || !fallbackAgent) {
-    throw new Error("No hay usuarios admin/agente configurados para asignar el lead.");
+  if (fallbackAdmin && fallbackAgent) {
+    return {
+      adminId: fallbackAdmin.id,
+      agentId: fallbackAgent.id,
+    };
   }
 
-  return {
-    adminId: fallbackAdmin.id,
-    agentId: fallbackAgent.id,
-  };
+  if (fallbackAdmin) {
+    return {
+      adminId: fallbackAdmin.id,
+      agentId: fallbackAdmin.id,
+    };
+  }
+
+  if (user?.id) {
+    return {
+      adminId: user.id,
+      agentId: user.id,
+    };
+  }
+
+  throw new Error("No hay usuarios admin/agente configurados para asignar el lead.");
 };
 
 const getFallbackActorId = async (lead: Lead): Promise<string> => {
@@ -171,12 +195,27 @@ const getFallbackActorId = async (lead: Lead): Promise<string> => {
 
 export const listLeads = async (): Promise<Lead[]> => {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
+  const scope = await getCurrentAccessScope();
+
+  if (!scope) {
+    return [];
+  }
+
+  let query = supabase
     .from("leads")
     .select(
       "id, nombre, telefono, pais, origen, administrador_id, agente_id, estado_actual, fecha_estado, created_at, updated_at"
-    )
-    .order("created_at", { ascending: false });
+    );
+
+  if (scope.role === "agente") {
+    query = query.eq("agente_id", scope.userId);
+  } else if (scope.role === "admin") {
+    query = scope.countryName
+      ? query.eq("pais", scope.countryName)
+      : query.eq("administrador_id", scope.userId);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error || !data) {
     console.error("[leads] listLeads error", error);
@@ -188,13 +227,28 @@ export const listLeads = async (): Promise<Lead[]> => {
 
 export const getLeadById = async (leadId: string): Promise<Lead | null> => {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
+  const scope = await getCurrentAccessScope();
+
+  if (!scope) {
+    return null;
+  }
+
+  let query = supabase
     .from("leads")
     .select(
       "id, nombre, telefono, pais, origen, administrador_id, agente_id, estado_actual, fecha_estado, created_at, updated_at"
     )
-    .eq("id", leadId)
-    .maybeSingle();
+    .eq("id", leadId);
+
+  if (scope.role === "agente") {
+    query = query.eq("agente_id", scope.userId);
+  } else if (scope.role === "admin") {
+    query = scope.countryName
+      ? query.eq("pais", scope.countryName)
+      : query.eq("administrador_id", scope.userId);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error || !data) {
     return null;
@@ -372,6 +426,12 @@ export const updateLeadStatus = async (
   status: LeadStatus
 ): Promise<Lead> => {
   const supabase = createSupabaseBrowserClient();
+  const scopedLead = await getLeadById(leadId);
+
+  if (!scopedLead) {
+    throw new Error("No tienes acceso a este lead.");
+  }
+
   const timestamp = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -414,6 +474,12 @@ export const closeLead = async (leadId: string): Promise<Lead> => {
 
 export const assignLead = async (leadId: string, agenteId: string): Promise<Lead> => {
   const supabase = createSupabaseBrowserClient();
+  const scopedLead = await getLeadById(leadId);
+
+  if (!scopedLead) {
+    throw new Error("No tienes acceso a este lead.");
+  }
+
   const { data, error } = await supabase
     .from("leads")
     .update({

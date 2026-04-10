@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import ConversationList from "../../../components/messages/ConversationList";
 import MessageComposer from "../../../components/messages/MessageComposer";
 import MessageThread from "../../../components/messages/MessageThread";
 import TemplateList from "../../../components/messages/TemplateList";
+import AlertBanner from "../../../components/ui/AlertBanner";
+import EmptyState from "../../../components/ui/EmptyState";
 import type { Conversation, Message, MessageTemplate } from "../../../types";
 import {
+  getOrCreateConversationByLead,
   listConversations,
   listMessages,
   listTemplates,
   sendMessage,
 } from "../../../services/mensajes.service";
+import { listLeads } from "../../../services/leads/leads.service";
 import { addAuditLog } from "../../../services/auditoria.service";
 
 export default function MensajesPage() {
@@ -29,9 +34,28 @@ export default function MensajesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
   const [sending, setSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
+  const [isBootstrappingConversation, setIsBootstrappingConversation] = useState(false);
+  const [autoBootstrapAttempted, setAutoBootstrapAttempted] = useState(false);
 
   const CONVERSATION_PAGE_SIZE = 8;
   const TEMPLATE_PAGE_SIZE = 8;
+
+  const refreshConversations = useCallback(async () => {
+    const data = await listConversations();
+    setConversations(data);
+    setLastRefreshAt(new Date());
+
+    if (!selectedConversationId && data.length > 0) {
+      setSelectedConversationId(data[0].id);
+    }
+  }, [selectedConversationId]);
+
+  const refreshMessages = useCallback(async (conversationId: string) => {
+    const data = await listMessages(conversationId);
+    setMessages(data);
+  }, []);
 
   const applyTemplateVariables = (templateBody: string, conversation: Conversation | null) => {
     const leadName = conversation?.leadName?.trim() || "cliente";
@@ -46,25 +70,35 @@ export default function MensajesPage() {
 
   useEffect(() => {
     const load = async () => {
-      const data = await listConversations();
-      setConversations(data);
-      if (data.length > 0) {
-        setSelectedConversationId(data[0].id);
-      }
+      await refreshConversations();
       const templatesData = await listTemplates();
       setTemplates(templatesData);
     };
     load();
-  }, []);
+  }, [refreshConversations]);
 
   useEffect(() => {
     const loadMessages = async () => {
       if (!selectedConversationId) return;
-      const data = await listMessages(selectedConversationId);
-      setMessages(data);
+      await refreshMessages(selectedConversationId);
     };
     loadMessages();
-  }, [selectedConversationId]);
+  }, [refreshMessages, selectedConversationId]);
+
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      try {
+        await refreshConversations();
+        if (selectedConversationId) {
+          await refreshMessages(selectedConversationId);
+        }
+      } catch {
+        // Avoid interrupting active typing when a polling refresh fails.
+      }
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [refreshConversations, refreshMessages, selectedConversationId]);
 
   const selectedConversation = useMemo(
     () => conversations.find((conv) => conv.id === selectedConversationId) ?? null,
@@ -159,6 +193,7 @@ export default function MensajesPage() {
       setMessages((prev) => [...prev, newMessage]);
       setMessageValue("");
       setSelectedTemplate(null);
+      setSuccessMessage("Mensaje enviado correctamente.");
       setConversations((prev) =>
         prev.map((conv) =>
           conv.id === selectedConversationId
@@ -181,10 +216,56 @@ export default function MensajesPage() {
     }
   };
 
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => setSuccessMessage(null), 3500);
+    return () => clearTimeout(timeoutId);
+  }, [successMessage]);
+
   const handleTemplateSelect = (template: MessageTemplate) => {
     setSelectedTemplate(template);
     setMessageValue(applyTemplateVariables(template.body, selectedConversation));
   };
+
+  const handleBootstrapConversation = useCallback(async () => {
+    if (isBootstrappingConversation) {
+      return;
+    }
+
+    setIsBootstrappingConversation(true);
+    setErrorMessage(null);
+
+    try {
+      const leads = await listLeads();
+      if (leads.length === 0) {
+        throw new Error("No hay leads disponibles para iniciar conversación.");
+      }
+
+      const conversation = await getOrCreateConversationByLead(leads[0].id);
+      await refreshConversations();
+      setSelectedConversationId(conversation.id);
+      await refreshMessages(conversation.id);
+      setSuccessMessage("Conversación lista para seguimiento.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "No se pudo preparar una conversación inicial."
+      );
+    } finally {
+      setIsBootstrappingConversation(false);
+    }
+  }, [isBootstrappingConversation, refreshConversations, refreshMessages]);
+
+  useEffect(() => {
+    if (autoBootstrapAttempted || conversations.length > 0) {
+      return;
+    }
+
+    setAutoBootstrapAttempted(true);
+    void handleBootstrapConversation();
+  }, [autoBootstrapAttempted, conversations.length, handleBootstrapConversation]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -196,9 +277,11 @@ export default function MensajesPage() {
       </div>
 
       {errorMessage ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {errorMessage}
-        </div>
+        <AlertBanner message={errorMessage} tone="danger" />
+      ) : null}
+
+      {successMessage ? (
+        <AlertBanner message={successMessage} tone="success" />
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_2fr_1fr]">
@@ -235,6 +318,26 @@ export default function MensajesPage() {
             selectedId={selectedConversationId}
             onSelect={setSelectedConversationId}
           />
+          {filteredConversations.length === 0 ? (
+            <div className="space-y-3">
+              <EmptyState
+                title="No hay conversaciones para mostrar"
+                description="Ajusta el filtro, espera nuevos mensajes o crea una conversación base para seguimiento."
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  void handleBootstrapConversation();
+                }}
+                disabled={isBootstrappingConversation}
+                className="w-full rounded-lg border border-botanical-300 bg-white px-3 py-2 text-xs font-semibold text-botanical-800 transition hover:bg-botanical-50 disabled:opacity-60"
+              >
+                {isBootstrappingConversation
+                  ? "Preparando conversación..."
+                  : "Crear conversación inicial"}
+              </button>
+            </div>
+          ) : null}
           {conversationTotalPages > 1 ? (
             <div className="mt-1 flex items-center justify-between text-xs text-botanical-700">
               <span>
@@ -275,6 +378,21 @@ export default function MensajesPage() {
             <p className="text-xs text-botanical-600">
               {selectedConversation?.leadPhone ?? ""}
             </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {selectedConversation ? (
+                <Link
+                  href={`/dashboard/leads?leadId=${selectedConversation.leadId}`}
+                  className="rounded-lg bg-botanical-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-botanical-800"
+                >
+                  Abrir lead
+                </Link>
+              ) : null}
+              <span className="text-xs text-botanical-500">
+                {lastRefreshAt
+                  ? `Ultima actualizacion ${lastRefreshAt.toLocaleTimeString("es-ES")}`
+                  : "Sin sincronizacion reciente"}
+              </span>
+            </div>
           </div>
           <MessageThread messages={messages} />
           <MessageComposer

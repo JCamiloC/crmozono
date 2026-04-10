@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { Country } from "../../types";
+import AlertBanner from "../ui/AlertBanner";
+import EmptyState from "../ui/EmptyState";
 
 type CountriesPanelProps = {
   countries: Country[];
@@ -136,7 +138,9 @@ export default function CountriesPanel({
         </button>
       </div>
 
-      {errorMessage ? <p className="mt-2 text-xs text-rose-600">{errorMessage}</p> : null}
+      {errorMessage ? (
+        <AlertBanner message={errorMessage} tone="danger" className="mt-2 text-xs" />
+      ) : null}
 
       <input
         value={query}
@@ -150,9 +154,11 @@ export default function CountriesPanel({
 
       <div className="mt-4 space-y-3">
         {pagedCountries.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-botanical-200 bg-botanical-50 px-4 py-3 text-sm text-botanical-700">
-            No hay países para los filtros actuales.
-          </div>
+          <EmptyState
+            title="No hay paises para los filtros actuales"
+            compact
+            className="bg-botanical-50"
+          />
         ) : (
           pagedCountries.map((country) => {
             const isEditing = editingId === country.id;

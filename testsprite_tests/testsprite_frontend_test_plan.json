@@ -1,0 +1,1368 @@
+[
+  {
+    "id": "TC001",
+    "title": "Sign in and reach the protected dashboard",
+    "description": "Verifies a user can sign in from the login page and is redirected to the dashboard where the main dashboard content is visible.",
+    "category": "Authentication and role-aware session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify KPI cards and operational alerts are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Dashboard access is gated for signed-out users",
+    "description": "Verifies that navigating to the dashboard while signed out does not show protected dashboard content.",
+    "category": "Authentication and role-aware session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is redirected to the login page"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Create a manual lead and see it in the leads list",
+    "description": "Verifies that a user can create a manual lead with country and phone and the new lead appears in the leads list.",
+    "category": "Lead lifecycle workflow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open leads"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new manual lead"
+      },
+      {
+        "type": "action",
+        "description": "Select a country for the lead"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique phone number into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the lead creation form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new lead appears in the leads list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Send a manual message in a conversation",
+    "description": "Verifies an agent can send a manually written message in a conversation and the sent message appears appended in the thread.",
+    "category": "Messaging and conversation management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open mensajes"
+      },
+      {
+        "type": "action",
+        "description": "Select a conversation from the conversation list"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique message into the message composer"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new outgoing message appears in the message thread"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Register a venta call outcome and then close a lead as venta",
+    "description": "Verifies an agent can record a venta call outcome and then close the related lead as venta with the closure allowed by rules.",
+    "category": "Calls registration and outcomes",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open llamadas"
+      },
+      {
+        "type": "action",
+        "description": "Select a call from the call list"
+      },
+      {
+        "type": "action",
+        "description": "Select the post-call result outcome venta"
+      },
+      {
+        "type": "action",
+        "description": "Fill a short note into the call notes field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the call result update"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open leads"
+      },
+      {
+        "type": "action",
+        "description": "Select the lead linked to the updated call"
+      },
+      {
+        "type": "action",
+        "description": "Change the lead status to venta"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lead is shown as closed as venta and a lead status history entry is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Filter/sort leads and change lead status with history update",
+    "description": "Verifies that filtering/sorting leads, selecting a lead, and changing its status results in an updated status history in the lead workspace.",
+    "category": "Lead lifecycle workflow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open leads"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new manual lead"
+      },
+      {
+        "type": "action",
+        "description": "Select a country for the lead"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique phone number into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the lead creation form"
+      },
+      {
+        "type": "action",
+        "description": "Apply a leads filter that keeps the new lead visible"
+      },
+      {
+        "type": "action",
+        "description": "Apply a leads sort option"
+      },
+      {
+        "type": "action",
+        "description": "Select the newly created lead from the list"
+      },
+      {
+        "type": "action",
+        "description": "Change the lead status to a different valid state"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lead status history shows a new entry for the status change"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Message persistence after reload",
+    "description": "Verifies that a sent message persists in the conversation thread after a page reload.",
+    "category": "Messaging and conversation management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open mensajes"
+      },
+      {
+        "type": "action",
+        "description": "Select a conversation from the conversation list"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique message into the message composer"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /dashboard/mensajes"
+      },
+      {
+        "type": "action",
+        "description": "Select the same conversation from the conversation list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the previously sent outgoing message is still present in the message thread"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Prevent closing a lead as venta without a registered call",
+    "description": "Verifies that attempting to mark a lead as venta without any registered call is blocked with a validation message and the lead is not closed.",
+    "category": "Lead lifecycle workflow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open leads"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new manual lead"
+      },
+      {
+        "type": "action",
+        "description": "Select a country for the lead"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique phone number into the phone field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the lead creation form"
+      },
+      {
+        "type": "action",
+        "description": "Select the newly created lead from the list"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to change the lead status to venta"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a closure validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the lead is not marked as closed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Send an approved template message",
+    "description": "Verifies an agent can apply an approved template to the composer, send it, and see the templated message appear in the thread.",
+    "category": "Messaging and conversation management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open mensajes"
+      },
+      {
+        "type": "action",
+        "description": "Select a conversation from the conversation list"
+      },
+      {
+        "type": "action",
+        "description": "Open the template picker"
+      },
+      {
+        "type": "action",
+        "description": "Select an approved template"
+      },
+      {
+        "type": "action",
+        "description": "Send the message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the templated outgoing message appears in the message thread"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Submit a post-call result and notes",
+    "description": "Verifies an agent can submit a call outcome with notes and see the updated result badge and call history entry.",
+    "category": "Calls registration and outcomes",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open llamadas"
+      },
+      {
+        "type": "action",
+        "description": "Select a call from the call list"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid post-call result outcome"
+      },
+      {
+        "type": "action",
+        "description": "Fill a short note into the call notes field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the call result update"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the call shows the updated result and an update entry is visible in call history"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Country filter updates dashboard KPIs",
+    "description": "Verifies that applying a country filter changes the dashboard KPI view to reflect the selected country.",
+    "category": "Dashboard (executive view and alerts)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Select a specific country in the dashboard country filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the KPI cards update to reflect the selected country"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "View conversation thread from inbox",
+    "description": "Verifies an agent can open a conversation from the inbox and see the full message thread and history displayed.",
+    "category": "Messaging and conversation management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open mensajes"
+      },
+      {
+        "type": "action",
+        "description": "Select a conversation from the conversation list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the message thread and message history are displayed for the selected conversation"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Complete a task and see status history updated",
+    "description": "Verifies an agent can mark a task as completada and the task history shows the status change.",
+    "category": "Task operations and follow-up control",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open tareas"
+      },
+      {
+        "type": "action",
+        "description": "Select a task from the task list"
+      },
+      {
+        "type": "action",
+        "description": "Update the task status to completada"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task shows as completada and a status change entry appears in task history"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Open an alert and navigate to related leads",
+    "description": "Verifies that selecting a dashboard alert shows its context and allows navigation to the related leads view.",
+    "category": "Dashboard (executive view and alerts)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click an alert to inspect its context"
+      },
+      {
+        "type": "action",
+        "description": "Click the action to review related leads"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the leads page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the leads list is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Navigate from conversation to linked lead",
+    "description": "Verifies an agent can use the conversation CTA to open the linked lead and land in the leads workspace for that lead.",
+    "category": "Messaging and conversation management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open mensajes"
+      },
+      {
+        "type": "action",
+        "description": "Select a conversation from the conversation list"
+      },
+      {
+        "type": "action",
+        "description": "Click the CTA to open the linked lead"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the leads page with a lead workspace/detail area visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Filter tasks by status and schedule window",
+    "description": "Verifies an agent can filter tasks by status and schedule window and see the task list update to match the selected filters.",
+    "category": "Task operations and follow-up control",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open tareas"
+      },
+      {
+        "type": "action",
+        "description": "Select a task status filter"
+      },
+      {
+        "type": "action",
+        "description": "Select a schedule window filter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the task list reflects the selected status and schedule window filters"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Update a user's role and country assignment and see it reflected",
+    "description": "Verifies an admin can change a user's role and country assignment and the user list shows the updated assignment.",
+    "category": "Configuration and governance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open configuration"
+      },
+      {
+        "type": "action",
+        "description": "Open the user assignments section"
+      },
+      {
+        "type": "action",
+        "description": "Select a user from the list to edit assignments"
+      },
+      {
+        "type": "action",
+        "description": "Select a new role for the user"
+      },
+      {
+        "type": "action",
+        "description": "Select a new country assignment for the user"
+      },
+      {
+        "type": "action",
+        "description": "Save the assignment changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected user's row reflects the updated role and country assignment"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Create a new campaign draft and see it in the list",
+    "description": "Verifies a user can create a campaign draft and the new draft appears in the campaigns list.",
+    "category": "Campaign management overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open campaigns"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new campaign draft"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique campaign name into the campaign name field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid country or audience option"
+      },
+      {
+        "type": "action",
+        "description": "Save the campaign draft"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new campaign draft appears in the campaigns list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Trigger an automation run and review run summary and audit entry",
+    "description": "Verifies an admin can trigger an automation run and see a run summary along with a new audit entry.",
+    "category": "Configuration and governance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open configuration"
+      },
+      {
+        "type": "action",
+        "description": "Open the automation run section"
+      },
+      {
+        "type": "action",
+        "description": "Trigger an automation run"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an automation run summary is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an audit log entry for the automation run is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "View call details and linked lead from call list",
+    "description": "Verifies an agent can browse calls, select a call, and see its details including the linked lead reference.",
+    "category": "Calls registration and outcomes",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open llamadas"
+      },
+      {
+        "type": "action",
+        "description": "Select a call from the call list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify call details are displayed and a linked lead reference is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Create and edit a country entry and see it in the list",
+    "description": "Verifies an admin can create a country entry, edit it, and the updated country list reflects the change.",
+    "category": "Configuration and governance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open configuration"
+      },
+      {
+        "type": "action",
+        "description": "Open the countries management section"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new country entry"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique country name into the country name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the country entry"
+      },
+      {
+        "type": "action",
+        "description": "Open the newly created country entry for editing"
+      },
+      {
+        "type": "action",
+        "description": "Fill an updated country name into the country name field"
+      },
+      {
+        "type": "action",
+        "description": "Save the country changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the country list includes the updated country entry"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Filter campaigns list by search and status",
+    "description": "Verifies a user can search and filter campaigns and the list updates to show only matching results.",
+    "category": "Campaign management overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open campaigns"
+      },
+      {
+        "type": "action",
+        "description": "Fill a campaign name keyword into the search field"
+      },
+      {
+        "type": "action",
+        "description": "Select a campaign status filter option"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the campaigns list shows only results matching the search and selected status"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Edit message template settings and see updated configuration summary",
+    "description": "Verifies an admin can update message template settings and saved changes appear in the configuration summary.",
+    "category": "Configuration and governance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open configuration"
+      },
+      {
+        "type": "action",
+        "description": "Open the template settings section"
+      },
+      {
+        "type": "action",
+        "description": "Select an existing message template to edit"
+      },
+      {
+        "type": "action",
+        "description": "Update one editable template field with a unique value"
+      },
+      {
+        "type": "action",
+        "description": "Save the template settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the configuration summary reflects the updated template settings"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Open a campaign to review details and recipient logs",
+    "description": "Verifies a user can open a campaign from the list and view its details along with per-recipient log statuses.",
+    "category": "Campaign management overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open campaigns"
+      },
+      {
+        "type": "action",
+        "description": "Click a campaign in the list to open its details"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify campaign details are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify per-recipient campaign logs with statuses are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "Edit automation parameters and see updated configuration summary",
+    "description": "Verifies an admin can update automation parameters and the configuration summary shows the saved changes.",
+    "category": "Configuration and governance",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open configuration"
+      },
+      {
+        "type": "action",
+        "description": "Open the automation configuration section"
+      },
+      {
+        "type": "action",
+        "description": "Update one automation parameter to a valid value"
+      },
+      {
+        "type": "action",
+        "description": "Save the automation configuration"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the configuration summary reflects the updated automation parameters"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Empty composer cannot send message",
+    "description": "Verifies attempting to send with an empty message composer is blocked and no new outgoing message is added to the thread.",
+    "category": "Messaging and conversation management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open mensajes"
+      },
+      {
+        "type": "action",
+        "description": "Select a conversation from the conversation list"
+      },
+      {
+        "type": "action",
+        "description": "Clear the message composer"
+      },
+      {
+        "type": "action",
+        "description": "Press Enter"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a message validation feedback is visible and no new outgoing message is added to the thread"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Create campaign draft requires mandatory fields",
+    "description": "Verifies the campaign creation form blocks saving when required fields are missing and shows validation feedback.",
+    "category": "Campaign management overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open campaigns"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new campaign draft"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to save the campaign draft without filling required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify form validation errors are displayed and the draft is not created"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Prevent duplicate pending task for same lead and type",
+    "description": "Verifies creating a second pending task of the same type for the same lead is blocked with validation feedback.",
+    "category": "Task operations and follow-up control",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open tareas"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new task"
+      },
+      {
+        "type": "action",
+        "description": "Select a lead for the task"
+      },
+      {
+        "type": "action",
+        "description": "Select a task type"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid schedule window or due date"
+      },
+      {
+        "type": "action",
+        "description": "Submit the task creation form"
+      },
+      {
+        "type": "action",
+        "description": "Start creating another new task"
+      },
+      {
+        "type": "action",
+        "description": "Select the same lead for the task"
+      },
+      {
+        "type": "action",
+        "description": "Select the same task type"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid schedule window or due date"
+      },
+      {
+        "type": "action",
+        "description": "Submit the task creation form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a duplicate-task validation feedback is visible and the second task is not created as pending"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC029",
+    "title": "Campaign list handles no matching results",
+    "description": "Verifies the campaigns page shows an empty state when filters yield no results.",
+    "category": "Campaign management overview",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open campaigns"
+      },
+      {
+        "type": "action",
+        "description": "Fill a search keyword unlikely to match any campaign into the search field"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state is displayed for no matching campaigns"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC030",
+    "title": "Invalid credentials show a login error",
+    "description": "Verifies that submitting invalid credentials shows an authentication error and the user is not signed in.",
+    "category": "Authentication and role-aware session",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill invalid-user@example.com into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill wrong-password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an invalid credentials error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user remains on the login page"
+      }
+    ],
+    "priority": "Low"
+  }
+]

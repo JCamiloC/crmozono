@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { listAuditLogs } from "../../services/auditoria.service";
 import { listCampaigns } from "../../services/campañas.service";
@@ -7,6 +8,10 @@ import { getSlaCloseAutomationConfig } from "../../services/configuracion.servic
 import { listLeads } from "../../services/leads.service";
 import { listCalls } from "../../services/llamadas.service";
 import { listTasks } from "../../services/tareas.service";
+import { getCurrentAccessScope } from "../../services/auth/access-scope.service";
+import AlertBanner from "../../components/ui/AlertBanner";
+import EmptyState from "../../components/ui/EmptyState";
+import SectionSkeleton from "../../components/ui/SectionSkeleton";
 import type { AuditLog, Campaign, Call, Lead, LeadStatus, Task } from "../../types";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
@@ -57,6 +62,10 @@ export default function DashboardPage() {
   const [slaDays, setSlaDays] = useState(5);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string>("all");
+  const [selectedAgent, setSelectedAgent] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<LeadStatus | "all">("all");
+  const [scopeRole, setScopeRole] = useState<string>("-");
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -74,12 +83,15 @@ export default function DashboardPage() {
             getSlaCloseAutomationConfig(),
           ]);
 
+        const scope = await getCurrentAccessScope();
+
         setLeads(leadsData);
         setTasks(tasksData);
         setCalls(callsData);
         setCampaigns(campaignsData);
         setAuditLogs(auditData);
         setSlaDays(slaConfig.days);
+        setScopeRole(scope?.role ?? "-");
         setReferenceNowMs(Date.now());
       } catch (error) {
         setErrorMessage(
@@ -105,14 +117,25 @@ export default function DashboardPage() {
 
   const dashboardData = useMemo(() => {
     const safeNowMs = referenceNowMs;
-    const totalLeads = leads.length;
-    const totalSales = leads.filter((lead) => lead.estadoActual === "venta").length;
+    const filteredLeads = leads.filter((lead) => {
+      const countryMatch = selectedCountry === "all" || lead.pais === selectedCountry;
+      const agentMatch = selectedAgent === "all" || lead.agenteId === selectedAgent;
+      const statusMatch = selectedStatus === "all" || lead.estadoActual === selectedStatus;
+      return countryMatch && agentMatch && statusMatch;
+    });
 
-    const activeLeads = leads.filter(
+    const leadIdsInScope = new Set(filteredLeads.map((lead) => lead.id));
+    const filteredTasks = tasks.filter((task) => leadIdsInScope.has(task.leadId));
+    const filteredCalls = calls.filter((call) => leadIdsInScope.has(call.leadId));
+
+    const totalLeads = filteredLeads.length;
+    const totalSales = filteredLeads.filter((lead) => lead.estadoActual === "venta").length;
+
+    const activeLeads = filteredLeads.filter(
       (lead) => lead.estadoActual !== "venta" && lead.estadoActual !== "cerrado_tiempo"
     ).length;
 
-    const slaBreachedLeads = leads.filter((lead) => {
+    const slaBreachedLeads = filteredLeads.filter((lead) => {
       const ageDays =
         (safeNowMs - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
       return (
@@ -122,7 +145,7 @@ export default function DashboardPage() {
       );
     }).length;
 
-    const slaDueSoonLeads = leads.filter((lead) => {
+    const slaDueSoonLeads = filteredLeads.filter((lead) => {
       const ageDays =
         (safeNowMs - new Date(lead.createdAt).getTime()) / (1000 * 60 * 60 * 24);
       return (
@@ -135,12 +158,12 @@ export default function DashboardPage() {
 
     const conversionRate = totalLeads > 0 ? (totalSales / totalLeads) * 100 : 0;
 
-    const overdueTasks = tasks.filter((task) => {
+    const overdueTasks = filteredTasks.filter((task) => {
       const dueAtMs = new Date(task.fechaProgramada).getTime();
       return task.estado === "vencida" || (task.estado === "pendiente" && dueAtMs < safeNowMs);
     }).length;
 
-    const upcomingTasks = tasks
+    const upcomingTasks = filteredTasks
       .filter((task) => task.estado === "pendiente")
       .sort(
         (leftTask, rightTask) =>
@@ -151,7 +174,7 @@ export default function DashboardPage() {
 
     const statusDistribution = Object.keys(STATUS_LABELS).map((statusKey) => {
       const status = statusKey as LeadStatus;
-      const count = leads.filter((lead) => lead.estadoActual === status).length;
+      const count = filteredLeads.filter((lead) => lead.estadoActual === status).length;
       return {
         status,
         label: STATUS_LABELS[status],
@@ -161,7 +184,7 @@ export default function DashboardPage() {
     });
 
     const countryDistribution = Array.from(
-      leads.reduce((accumulator, lead) => {
+      filteredLeads.reduce((accumulator, lead) => {
         accumulator.set(lead.pais, (accumulator.get(lead.pais) ?? 0) + 1);
         return accumulator;
       }, new Map<string, number>())
@@ -170,10 +193,30 @@ export default function DashboardPage() {
       .sort((leftCountry, rightCountry) => rightCountry.count - leftCountry.count)
       .slice(0, 5);
 
-    const effectiveCalls = calls.filter(
+    const effectiveCalls = filteredCalls.filter(
       (call) => call.result === "venta" || call.result === "interesado"
     ).length;
-    const callEffectiveness = calls.length > 0 ? (effectiveCalls / calls.length) * 100 : 0;
+    const callEffectiveness = filteredCalls.length > 0 ? (effectiveCalls / filteredCalls.length) * 100 : 0;
+
+    const agentLeaderboard = Array.from(
+      filteredLeads.reduce((accumulator, lead) => {
+        const current = accumulator.get(lead.agenteId) ?? { total: 0, ventas: 0 };
+        current.total += 1;
+        if (lead.estadoActual === "venta") {
+          current.ventas += 1;
+        }
+        accumulator.set(lead.agenteId, current);
+        return accumulator;
+      }, new Map<string, { total: number; ventas: number }>())
+    )
+      .map(([agentId, values]) => ({
+        agentId,
+        total: values.total,
+        ventas: values.ventas,
+        conversion: values.total > 0 ? (values.ventas / values.total) * 100 : 0,
+      }))
+      .sort((left, right) => right.ventas - left.ventas)
+      .slice(0, 5);
 
     const runningCampaigns = campaigns.filter((campaign) => campaign.status === "running").length;
     const scheduledCampaigns = campaigns.filter(
@@ -185,6 +228,65 @@ export default function DashboardPage() {
         ? campaigns.reduce((sum, campaign) => sum + campaign.deliveryRate, 0) /
           campaigns.length
         : 0;
+
+    const staleLeadCount = filteredLeads.filter((lead) => {
+      if (lead.estadoActual !== "nuevo" && lead.estadoActual !== "contactado") {
+        return false;
+      }
+      const hoursWithoutMove =
+        (safeNowMs - new Date(lead.fechaEstado).getTime()) / (1000 * 60 * 60);
+      return hoursWithoutMove >= 24;
+    }).length;
+
+    const pendingTasksLongCount = filteredTasks.filter((task) => {
+      if (task.estado !== "pendiente") {
+        return false;
+      }
+      const ageHours = (safeNowMs - new Date(task.fechaCreacion).getTime()) / (1000 * 60 * 60);
+      return ageHours >= 48;
+    }).length;
+
+    const lowCallEffectiveness = filteredCalls.length >= 5 && callEffectiveness < 35;
+
+    const operationalAlerts = [
+      slaBreachedLeads > 0
+        ? {
+            tone: "danger" as const,
+            message: `${slaBreachedLeads} lead(s) superaron SLA y requieren cierre o reactivacion.`,
+            href: "/dashboard/leads?status=nuevo",
+            actionLabel: "Revisar leads",
+          }
+        : null,
+      staleLeadCount > 0
+        ? {
+            tone: "warning" as const,
+            message: `${staleLeadCount} lead(s) llevan mas de 24h sin avance en etapa inicial.`,
+            href: "/dashboard/leads?status=nuevo",
+            actionLabel: "Ver embudo",
+          }
+        : null,
+      pendingTasksLongCount > 0
+        ? {
+            tone: "warning" as const,
+            message: `${pendingTasksLongCount} tarea(s) pendientes por mas de 48h sin resolver.`,
+            href: "/dashboard/tareas",
+            actionLabel: "Ver tareas",
+          }
+        : null,
+      lowCallEffectiveness
+        ? {
+            tone: "danger" as const,
+            message: "La efectividad de llamadas esta por debajo de 35%. Revisa guion y priorizacion.",
+            href: "/dashboard/llamadas",
+            actionLabel: "Revisar llamadas",
+          }
+        : null,
+    ].filter(Boolean) as Array<{
+      tone: "warning" | "danger";
+      message: string;
+      href: string;
+      actionLabel: string;
+    }>;
 
     return {
       totalLeads,
@@ -200,26 +302,45 @@ export default function DashboardPage() {
       avgDeliveryRate,
       statusDistribution,
       countryDistribution,
+      agentLeaderboard,
+      operationalAlerts,
       upcomingTasks,
       recentAuditLogs: auditLogs.slice(0, 8),
     };
-  }, [auditLogs, calls, campaigns, leads, referenceNowMs, slaDays, tasks]);
+  }, [
+    auditLogs,
+    calls,
+    campaigns,
+    leads,
+    referenceNowMs,
+    selectedAgent,
+    selectedCountry,
+    selectedStatus,
+    slaDays,
+    tasks,
+  ]);
+
+  const availableCountries = useMemo(
+    () => Array.from(new Set(leads.map((lead) => lead.pais))).sort(),
+    [leads]
+  );
+
+  const availableAgents = useMemo(
+    () => Array.from(new Set(leads.map((lead) => lead.agenteId))).sort(),
+    [leads]
+  );
 
   if (loading) {
     return (
       <div className="space-y-3">
         <h1 className="text-2xl font-semibold text-botanical-900">Dashboard operativo</h1>
-        <p className="text-sm text-botanical-600">Cargando métricas comerciales...</p>
+        <SectionSkeleton lines={5} />
       </div>
     );
   }
 
   if (errorMessage) {
-    return (
-      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-        {errorMessage}
-      </div>
-    );
+    return <AlertBanner message={errorMessage} tone="danger" />;
   }
 
   return (
@@ -229,6 +350,48 @@ export default function DashboardPage() {
         <p className="text-sm text-botanical-600">
           Vista ejecutiva de leads, seguimiento, SLA y actividad comercial.
         </p>
+        <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-botanical-500">
+          Alcance actual: {scopeRole}
+        </p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <select
+          value={selectedCountry}
+          onChange={(event) => setSelectedCountry(event.target.value)}
+          className="rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800"
+        >
+          <option value="all">Todos los paises</option>
+          {availableCountries.map((country) => (
+            <option key={country} value={country}>
+              {country}
+            </option>
+          ))}
+        </select>
+        <select
+          value={selectedAgent}
+          onChange={(event) => setSelectedAgent(event.target.value)}
+          className="rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800"
+        >
+          <option value="all">Todos los agentes</option>
+          {availableAgents.map((agent) => (
+            <option key={agent} value={agent}>
+              {agent.slice(0, 8)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={selectedStatus}
+          onChange={(event) => setSelectedStatus(event.target.value as LeadStatus | "all")}
+          className="rounded-lg border border-botanical-200 bg-white px-3 py-2 text-sm text-botanical-800"
+        >
+          <option value="all">Todos los estados</option>
+          {Object.entries(STATUS_LABELS).map(([status, label]) => (
+            <option key={status} value={status}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -269,6 +432,32 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {dashboardData.operationalAlerts.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-botanical-500">
+            Alertas operativas
+          </p>
+          {dashboardData.operationalAlerts.map((alert, index) => (
+            <div
+              key={`${alert.message}-${index}`}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-botanical-100 bg-white p-2"
+            >
+              <AlertBanner
+                tone={alert.tone}
+                message={alert.message}
+                className="flex-1 border-none bg-transparent p-2"
+              />
+              <Link
+                href={alert.href}
+                className="rounded-lg border border-botanical-300 bg-white px-3 py-1.5 text-xs font-semibold text-botanical-800 transition hover:bg-botanical-50"
+              >
+                {alert.actionLabel}
+              </Link>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
@@ -335,9 +524,7 @@ export default function DashboardPage() {
           </p>
           <div className="mt-4 space-y-2 md:hidden">
             {dashboardData.upcomingTasks.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-botanical-200 bg-botanical-50 px-4 py-3 text-sm text-botanical-600">
-                No hay tareas pendientes registradas.
-              </div>
+              <EmptyState title="No hay tareas pendientes registradas" compact />
             ) : (
               dashboardData.upcomingTasks.map((task) => (
                 <div
@@ -366,7 +553,7 @@ export default function DashboardPage() {
                 {dashboardData.upcomingTasks.length === 0 ? (
                   <tr>
                     <td className="px-4 py-4 text-botanical-600" colSpan={4}>
-                      No hay tareas pendientes registradas.
+                      <EmptyState title="No hay tareas pendientes registradas" compact />
                     </td>
                   </tr>
                 ) : (
@@ -392,7 +579,7 @@ export default function DashboardPage() {
           </p>
           <div className="mt-4 space-y-2">
             {dashboardData.countryDistribution.length === 0 ? (
-              <p className="text-sm text-botanical-600">Sin leads registrados.</p>
+              <EmptyState title="Sin leads registrados" compact />
             ) : (
               dashboardData.countryDistribution.map((item) => (
                 <div
@@ -406,6 +593,29 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-botanical-500">
+            Productividad por agente
+          </p>
+          <div className="mt-4 space-y-2">
+            {dashboardData.agentLeaderboard.length === 0 ? (
+              <p className="text-sm text-botanical-600">Sin datos para el filtro actual.</p>
+            ) : (
+              dashboardData.agentLeaderboard.map((item) => (
+                <div
+                  key={item.agentId}
+                  className="rounded-lg border border-botanical-100 bg-botanical-50 px-3 py-2"
+                >
+                  <p className="text-sm font-semibold text-botanical-900">Agente {item.agentId.slice(0, 8)}</p>
+                  <p className="text-xs text-botanical-700">
+                    Leads: {item.total} · Ventas: {item.ventas} · Conversión: {formatPercent(item.conversion)}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="min-w-0 rounded-2xl border border-botanical-100 bg-white p-5 shadow-sm">
@@ -414,7 +624,7 @@ export default function DashboardPage() {
         </p>
         <div className="mt-4 space-y-2">
           {dashboardData.recentAuditLogs.length === 0 ? (
-            <p className="text-sm text-botanical-600">Sin actividad registrada.</p>
+            <EmptyState title="Sin actividad registrada" compact />
           ) : (
             dashboardData.recentAuditLogs.map((log) => (
               <div

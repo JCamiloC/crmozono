@@ -10,6 +10,8 @@ import SettingsPlaceholder from "../../../components/settings/SettingsPlaceholde
 import SlaAutomationPanel from "../../../components/settings/SlaAutomationPanel";
 import TemplateSettingsPanel from "../../../components/settings/TemplateSettingsPanel";
 import UserAssignmentsPanel from "../../../components/settings/UserAssignmentsPanel";
+import AlertBanner from "../../../components/ui/AlertBanner";
+import SectionSkeleton from "../../../components/ui/SectionSkeleton";
 import type {
   AuditLog,
   Country,
@@ -60,6 +62,7 @@ export default function ConfiguracionPage() {
   const [runningSla, setRunningSla] = useState(false);
   const [slaSummary, setSlaSummary] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const loadConfigurationData = async () => {
     const [
@@ -95,7 +98,9 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       await loadConfigurationData();
+      setLoading(false);
     };
     load();
   }, []);
@@ -305,11 +310,17 @@ export default function ConfiguracionPage() {
       </div>
 
       {errorMessage ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {errorMessage}
+        <AlertBanner message={errorMessage} tone="danger" />
+      ) : null}
+
+      {loading ? (
+        <div className="rounded-2xl border border-botanical-100 bg-white p-5">
+          <SectionSkeleton lines={6} />
         </div>
       ) : null}
 
+      {!loading ? (
+        <>
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
         <div className="min-w-0">
           <RolesPanel roles={roles} />
@@ -383,6 +394,8 @@ export default function ConfiguracionPage() {
       <div className="min-w-0">
         <AuditPanel logs={auditLogs} />
       </div>
+        </>
+      ) : null}
     </div>
   );
 }

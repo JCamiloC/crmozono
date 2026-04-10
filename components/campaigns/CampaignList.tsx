@@ -1,5 +1,6 @@
 import type { Campaign } from "../../types";
 import CampaignStatusBadge from "./CampaignStatusBadge";
+import EmptyState from "../ui/EmptyState";
 
 type CampaignListProps = {
   campaigns: Campaign[];
@@ -14,6 +15,9 @@ export default function CampaignList({
 }: CampaignListProps) {
   return (
     <div className="space-y-3">
+      {campaigns.length === 0 ? (
+        <EmptyState title="Sin campañas para mostrar" compact className="bg-white" />
+      ) : null}
       {campaigns.map((campaign) => (
         <button
           key={campaign.id}

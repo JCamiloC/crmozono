@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import CampaignDetailPanel from "../../../components/campaigns/CampaignDetailPanel";
 import CampaignForm from "../../../components/campaigns/CampaignForm";
 import CampaignList from "../../../components/campaigns/CampaignList";
+import EmptyState from "../../../components/ui/EmptyState";
+import SectionSkeleton from "../../../components/ui/SectionSkeleton";
 import type { Campaign, CampaignLog } from "../../../types";
 import {
   listCampaignLogs,
@@ -22,16 +24,19 @@ export default function CampanasPage() {
     "scheduled_desc" | "scheduled_asc" | "name_asc" | "name_desc" | "delivery_desc"
   >("scheduled_desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   const PAGE_SIZE = 8;
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       const data = await listCampaigns();
       setCampaigns(data);
       if (data.length > 0) {
         setSelectedCampaignId(data[0].id);
       }
+      setLoading(false);
     };
     load();
   }, []);
@@ -174,6 +179,13 @@ export default function CampanasPage() {
             selectedId={selectedCampaignId}
             onSelect={setSelectedCampaignId}
           />
+          {!loading && processedCampaigns.length === 0 ? (
+            <EmptyState
+              title="No hay campañas para los filtros actuales"
+              description="Prueba con otro estado o crea una nueva campaña."
+              className="bg-white"
+            />
+          ) : null}
           {totalPages > 1 ? (
             <div className="mt-1 flex items-center justify-between text-xs text-botanical-700">
               <span>
@@ -202,7 +214,13 @@ export default function CampanasPage() {
         </div>
 
         <div className="min-w-0">
-          <CampaignDetailPanel campaign={selectedCampaign} logs={logs} />
+          {loading ? (
+            <div className="rounded-2xl border border-botanical-100 bg-white p-4 shadow-sm">
+              <SectionSkeleton lines={5} />
+            </div>
+          ) : (
+            <CampaignDetailPanel campaign={selectedCampaign} logs={logs} />
+          )}
         </div>
 
         <div className="min-w-0">

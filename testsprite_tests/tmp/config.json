@@ -1,0 +1,34 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "crmozono",
+    "projectPath": "c:\\Users\\NITRO\\Desktop\\crmozono",
+    "testIds": [
+      "TC001",
+      "TC002",
+      "TC003",
+      "TC004",
+      "TC005",
+      "TC006",
+      "TC007",
+      "TC008",
+      "TC009",
+      "TC010",
+      "TC011",
+      "TC012",
+      "TC013",
+      "TC014",
+      "TC015"
+    ],
+    "additionalInstruction": "Use admin@superozono.local / admin. Use /dashboard routes. For empty inbox use 'Crear conversación inicial' if necessary. Ensure searched lead is selected before close actions.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-L0Q9iYQmFvhxOMjvlE9mW8CdMCrNIfmUeoaBeyTAyug_fBHS_xCLnQO39RKyU2fpsuo7DRkggKLnJl15bLhyyj8DAY6WgF2sCAIy3VfnpVrmUoEg9NR5uZ9Pa6IWSbTxfwE"
+    }
+  },
+  "serverPort": 62733,
+  "proxy": "http://2e61b0bd-f69e-4ec2-976d-33248997a926:EnZmbUkMCX4ypUMBdjPV1VoQIzjHi8R0@tun.testsprite.com:8080"
+}
